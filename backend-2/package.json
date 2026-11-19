@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "test": "node scripts/test-api.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:api": "node scripts/test-api.js",
     "start": "node dist/server.js",
     "serve": "tsx src/server.ts",
     "typecheck": "tsc --noEmit"
@@ -26,6 +28,7 @@
     "@types/node": "^22.10.7",
     "@types/pg": "^8.11.10",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^5.1.1"
   }
 }

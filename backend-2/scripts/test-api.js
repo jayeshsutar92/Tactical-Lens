@@ -205,6 +205,20 @@ async function runTests() {
     assert(!!firstAnalysis.scenario_id, 'Analysis has scenario_id');
     assert(!!firstAnalysis.scenario_title, 'Analysis has scenario_title');
 
+    // 9b. Test Deterministic Analysis Generation POST /api/v1/analysis
+    console.log('\n9b. Testing Deterministic Analysis POST /api/v1/analysis ...');
+    const createAnalysisRes = await makeRequest('POST', '/api/v1/analysis', {
+      scenario_id: firstScenario.id,
+      user_query: 'How does the defending team coordinate cover shadows to funnel play wide?',
+      focus_areas: ['cover_shadows', 'compactness'],
+    });
+    assert(createAnalysisRes.status === 201, 'Analysis created with HTTP 201');
+    assert(createAnalysisRes.data?.status === 'completed', "Analysis status is 'completed'");
+    assert(!!createAnalysisRes.data?.analysis?.situation_overview, '10-section report generated with situation_overview');
+    assert(!!createAnalysisRes.data?.spatial_metrics?.low_block_compactness, 'TacticalLens low_block_compactness present in metrics');
+    assert(!!createAnalysisRes.data?.spatial_metrics?.zone14_density, 'TacticalLens zone14_density present in metrics');
+    assert(!!createAnalysisRes.data?.spatial_metrics?.pressing_trigger_analysis, 'TacticalLens pressing_trigger_analysis present in metrics');
+
     // 10. Test Analysis Detail GET /api/v1/analysis/:id
     console.log(`\n10. Testing Analysis Detail GET /api/v1/analysis/${firstAnalysis.id} ...`);
     const analysisDetailRes = await makeRequest('GET', `/api/v1/analysis/${firstAnalysis.id}`);
