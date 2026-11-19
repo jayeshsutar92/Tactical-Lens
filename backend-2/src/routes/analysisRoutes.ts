@@ -1,9 +1,19 @@
 import { Router } from 'express';
 import { AnalysisController } from '../controllers/analysisController.js';
-import { validateParams, validateQuery } from '../middleware/validate.js';
-import { analysisIdParamSchema, analysisQuerySchema } from '../schemas/analysis.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
+import {
+  analysisCreateRequestSchema,
+  analysisIdParamSchema,
+  analysisQuerySchema,
+} from '../schemas/analysis.js';
 
 export const analysisRouter = Router();
+
+analysisRouter.post(
+  '/',
+  validateBody(analysisCreateRequestSchema),
+  AnalysisController.createAnalysis
+);
 
 analysisRouter.get(
   '/',

@@ -1,8 +1,17 @@
 import type { Request, Response, NextFunction } from 'express';
 import { AnalysisService } from '../services/analysisService.js';
-import type { AnalysisQueryInput } from '../schemas/analysis.js';
+import type { AnalysisCreateRequest, AnalysisQueryInput } from '../schemas/analysis.js';
 
 export class AnalysisController {
+  public static async createAnalysis(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await AnalysisService.createAnalysis(req.body as AnalysisCreateRequest);
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   public static async listAnalyses(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await AnalysisService.getAnalyses(req.query as unknown as AnalysisQueryInput);
