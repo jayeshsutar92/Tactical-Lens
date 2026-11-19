@@ -62,7 +62,7 @@ export const AppSidebar: FC = () => {
               color: 'var(--text-primary)',
             }}
           >
-            Press<span style={{ color: 'var(--color-pitch-light)' }}>Lens</span>
+            Tactical<span style={{ color: 'var(--color-pitch-light)' }}>Lens</span>
           </h1>
           <p
             style={{
@@ -157,7 +157,7 @@ export const AppSidebar: FC = () => {
               }}
             />
             <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              PressLens Core
+              TacticalLens Core
             </span>
           </div>
           <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>

@@ -69,11 +69,11 @@ export const DashboardPage: FC = () => {
               color: 'var(--text-primary)',
             }}
           >
-            Welcome to PressLens
+            Welcome to TacticalLens
           </h2>
           <p style={{ margin: 0, fontSize: '1rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             Analyze pressing mechanisms, evaluate cover shadows, and dissect defensive transitions.
-            PressLens combines deterministic spatial pitch geometry with curated football theoretical literature.
+            TacticalLens combines deterministic spatial pitch geometry with curated football theoretical literature.
           </p>
         </div>
 

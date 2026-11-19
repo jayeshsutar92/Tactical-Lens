@@ -14,10 +14,10 @@ export const AppLayout: FC = () => {
         </main>
         <footer className="pl-footer">
           <div>
-            <span>PressLens Football Intelligence Engine</span> &bull;{' '}
+            <span>TacticalLens Football Intelligence Engine</span> &bull;{' '}
             <span style={{ color: 'var(--text-dim)' }}>Powered by FastAPI, PostgreSQL, and Groq</span>
           </div>
-          <div style={{ fontFamily: 'var(--font-mono)' }}>PressLens UI v0.2.0</div>
+          <div style={{ fontFamily: 'var(--font-mono)' }}>TacticalLens UI v0.2.0</div>
         </footer>
       </div>
     </div>

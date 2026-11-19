@@ -8,12 +8,13 @@ export interface RecentAnalysisItem {
   createdAt: string
 }
 
-const STORAGE_KEY = 'presslens_recent_analyses'
+const STORAGE_KEY = 'tacticallens_recent_analyses'
+const LEGACY_STORAGE_KEY = 'presslens_recent_analyses'
 const MAX_RECENT_ITEMS = 25
 
 export function getRecentAnalyses(): RecentAnalysisItem[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     return Array.isArray(parsed) ? (parsed as RecentAnalysisItem[]) : []
