@@ -36,3 +36,9 @@ export class ConfigurationError extends AppError {
     super(message, 503, 'CONFIGURATION_ERROR');
   }
 }
+
+export class AIProviderError extends AppError {
+  constructor(message: string, statusCode = 502, details?: unknown) {
+    super(message, statusCode, 'AI_PROVIDER_ERROR', details);
+  }
+}

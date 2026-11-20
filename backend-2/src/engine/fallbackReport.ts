@@ -12,7 +12,7 @@ import type {
   TacticalAdvantages,
 } from '../schemas/analysis.js';
 import { fullTacticalAnalysisReportSchema } from '../schemas/analysis.js';
-import type { ScenarioInspectionResult } from './scenarioTool.js';
+import { ScenarioTool, type ScenarioInspectionResult } from './scenarioTool.js';
 import type { TacticalEngineResult } from './tacticalEngine.js';
 import type { ValidationToolResult } from './validationTool.js';
 
@@ -249,4 +249,20 @@ export class FallbackReportEngine {
     // Strict schema parse ensures 100% contract compliance
     return fullTacticalAnalysisReportSchema.parse(report);
   }
+}
+
+export function generateFallbackReport(
+  scenarioData: Record<string, unknown>,
+  spatialInfo: TacticalEngineResult,
+  validationData: ValidationToolResult,
+  citations?: SourceCitation[]
+): FullTacticalAnalysisReport {
+  const scenarioInfo = ScenarioTool.execute(scenarioData);
+  return FallbackReportEngine.generateReport({
+    scenarioData,
+    scenarioInfo,
+    spatialInfo,
+    validationData,
+    citations,
+  });
 }

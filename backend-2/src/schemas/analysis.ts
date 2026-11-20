@@ -131,6 +131,20 @@ export const analysisStatusResponseSchema = z.object({
   error_message: z.string().nullable().optional(),
 });
 
+export const analysisFollowUpRequestSchema = z.object({
+  question: z.string().min(3).max(1000),
+});
+
+export const analysisFollowUpResponseSchema = z.object({
+  analysis_id: uuidSchema,
+  question: z.string(),
+  answer: z.string(),
+  relevant_players_mentioned: z.array(z.string()).default([]),
+  clarified_tactics: z.array(z.string()).default([]),
+  sources_cited: z.array(sourceCitationSchema).default([]),
+  created_at: z.string(),
+});
+
 export type SourceCitation = z.infer<typeof sourceCitationSchema>;
 export type SituationOverview = z.infer<typeof situationOverviewSchema>;
 export type PressingStrategy = z.infer<typeof pressingStrategySchema>;
@@ -149,3 +163,5 @@ export type ConversationMessage = z.infer<typeof conversationMessageSchema>;
 export type AnalysisResponse = z.infer<typeof analysisResponseSchema>;
 export type AnalysisDetailResponse = z.infer<typeof analysisDetailResponseSchema>;
 export type AnalysisStatusResponse = z.infer<typeof analysisStatusResponseSchema>;
+export type AnalysisFollowUpRequest = z.infer<typeof analysisFollowUpRequestSchema>;
+export type AnalysisFollowUpResponse = z.infer<typeof analysisFollowUpResponseSchema>;
