@@ -3,6 +3,7 @@ import { AnalysisController } from '../controllers/analysisController.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import {
   analysisCreateRequestSchema,
+  analysisFollowUpRequestSchema,
   analysisIdParamSchema,
   analysisQuerySchema,
 } from '../schemas/analysis.js';
@@ -13,6 +14,13 @@ analysisRouter.post(
   '/',
   validateBody(analysisCreateRequestSchema),
   AnalysisController.createAnalysis
+);
+
+analysisRouter.post(
+  '/:id/follow-up',
+  validateParams(analysisIdParamSchema),
+  validateBody(analysisFollowUpRequestSchema),
+  AnalysisController.createFollowUp
 );
 
 analysisRouter.get(

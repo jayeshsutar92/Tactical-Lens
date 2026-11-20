@@ -1,15 +1,12 @@
 import crypto from 'crypto';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { analyses, conversationMessages, db, scenarios } from '../db/index.js';
-import {
-  FallbackReportEngine,
-  ScenarioTool,
-  TacticalEngine,
-  ValidationTool,
-} from '../engine/index.js';
+import { TacticalAgentOrchestrator } from '../engine/orchestrator.js';
 import type {
   AnalysisCreateRequest,
   AnalysisDetailResponse,
+  AnalysisFollowUpRequest,
+  AnalysisFollowUpResponse,
   AnalysisQueryInput,
   AnalysisResponse,
   AnalysisStatusResponse,
@@ -20,7 +17,8 @@ import { EntityNotFoundError } from '../utils/errors.js';
 
 export class AnalysisService {
   /**
-   * Executes deterministic tactical analysis on a match scenario and persists results in PostgreSQL.
+   * Executes tactical analysis on a match scenario using the sequential AI/RAG orchestrator,
+   * with automatic fallback to the deterministic engine if AI providers are unreachable or fail validation.
    */
   public static async createAnalysis(request: AnalysisCreateRequest): Promise<AnalysisResponse> {
     const scenarioRows = await db
@@ -46,22 +44,14 @@ export class AnalysisService {
       match_context: scenario.match_context,
     };
 
-    // 1. Validation Tool
-    const validationData = ValidationTool.execute(scenarioData);
-
-    // 2. Scenario Inspection Tool
-    const scenarioInfo = ScenarioTool.execute(scenarioData);
-
-    // 3. Spatial & Defensive Mechanics Geometry
-    const spatialInfo = TacticalEngine.analyzeScenario(scenarioData);
-
-    // 4. Deterministic Report Generation
-    const report = FallbackReportEngine.generateReport({
+    // Execute sequential orchestration workflow
+    const orchestrator = new TacticalAgentOrchestrator();
+    const { report, spatialMetrics, toolsExecuted } = await orchestrator.runAnalysis(
+      db,
       scenarioData,
-      scenarioInfo,
-      spatialInfo,
-      validationData,
-    });
+      request.user_query,
+      request.focus_areas
+    );
 
     const analysisId = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -70,17 +60,12 @@ export class AnalysisService {
       user_query: request.user_query ?? null,
       focus_areas: request.focus_areas ?? [],
       structured_analysis: report,
-      spatial_metrics: spatialInfo,
-      tools_executed: [
-        'context_validation',
-        'scenario_inspection',
-        'tactical_relationship_analysis',
-        'deterministic_fallback_engine',
-      ],
+      spatial_metrics: spatialMetrics,
+      tools_executed: toolsExecuted,
       confidence_score: report.confidence_and_limitations.confidence_score,
     };
 
-    // 5. Persist Analysis Record
+    // Persist Analysis Record
     await db.insert(analyses).values({
       id: analysisId,
       scenario_id: scenario.id,
@@ -92,7 +77,7 @@ export class AnalysisService {
       updated_at: now,
     });
 
-    // 6. Persist Initial Conversation Turns
+    // Persist Initial Conversation Turns
     const queryText =
       request.user_query || `Analyze tactical pressing structure for ${scenario.title}.`;
 
@@ -125,10 +110,115 @@ export class AnalysisService {
       tactical_summary: report.situation_overview.summary,
       pressing_intensity: report.pressing_strategy.intensity,
       analysis: report,
-      spatial_metrics: spatialInfo as unknown as Record<string, unknown>,
-      tools_executed: metricsPayload.tools_executed,
+      spatial_metrics: spatialMetrics as unknown as Record<string, unknown>,
+      tools_executed: toolsExecuted,
       created_at: now,
       updated_at: now,
+    };
+  }
+
+  /**
+   * Executes a contextual follow-up question turn and persists multi-turn conversation history.
+   */
+  public static async createFollowUp(
+    analysisId: string,
+    request: AnalysisFollowUpRequest
+  ): Promise<AnalysisFollowUpResponse> {
+    const analysisRows = await db
+      .select()
+      .from(analyses)
+      .where(eq(analyses.id, analysisId))
+      .limit(1);
+
+    const analysis = analysisRows[0];
+    if (!analysis) {
+      throw new EntityNotFoundError('Analysis', analysisId);
+    }
+
+    const scenarioRows = await db
+      .select()
+      .from(scenarios)
+      .where(eq(scenarios.id, analysis.scenario_id))
+      .limit(1);
+
+    const scenario = scenarioRows[0];
+    if (!scenario) {
+      throw new EntityNotFoundError('Scenario', analysis.scenario_id);
+    }
+
+    const scenarioData: Record<string, unknown> = {
+      id: scenario.id,
+      title: scenario.title,
+      description: scenario.description,
+      match_phase: scenario.match_phase,
+      tactical_situation: scenario.tactical_situation,
+      attacking_team: scenario.attacking_team,
+      defending_team: scenario.defending_team,
+      ball_position: scenario.ball_position,
+      match_context: scenario.match_context,
+    };
+
+    // Retrieve previous conversation history
+    const pastMessages = await db
+      .select({
+        role: conversationMessages.role,
+        content: conversationMessages.content,
+      })
+      .from(conversationMessages)
+      .where(eq(conversationMessages.session_id, analysisId))
+      .orderBy(asc(conversationMessages.created_at));
+
+    const initialSummary = analysis.tactical_summary || 'Tactical analysis scenario breakdown';
+    const conversationHistory = pastMessages.map((m) => ({
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+    }));
+
+    const orchestrator = new TacticalAgentOrchestrator();
+    const result = await orchestrator.runFollowUp(
+      db,
+      scenarioData,
+      initialSummary,
+      conversationHistory,
+      request.question
+    );
+
+    const now = new Date().toISOString();
+
+    // Persist user follow-up turn and assistant response turn
+    await db.insert(conversationMessages).values([
+      {
+        id: crypto.randomUUID(),
+        session_id: analysisId,
+        role: 'user',
+        content: request.question,
+        msg_metadata: { type: 'follow_up_query' },
+        created_at: now,
+        updated_at: now,
+      },
+      {
+        id: crypto.randomUUID(),
+        session_id: analysisId,
+        role: 'assistant',
+        content: result.answer,
+        msg_metadata: {
+          relevant_players_mentioned: result.relevant_players_mentioned,
+          clarified_tactics: result.clarified_tactics,
+          sources_cited: result.citations,
+        },
+        created_at: now,
+        updated_at: now,
+      },
+    ]);
+
+    return {
+      analysis_id: analysisId,
+      question: request.question,
+      answer: result.answer,
+      relevant_players_mentioned: result.relevant_players_mentioned,
+      clarified_tactics: result.clarified_tactics,
+      sources_cited: result.citations,
+      created_at: now,
     };
   }
 
