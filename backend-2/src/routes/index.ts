@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { analysisRouter } from './analysisRoutes.js';
 import { healthRouter } from './healthRoutes.js';
+import { knowledgeRouter } from './knowledgeRoutes.js';
 import { scenarioRouter } from './scenarioRoutes.js';
 
 export const apiV1Router = Router();
@@ -9,3 +10,4 @@ export const apiV1Router = Router();
 apiV1Router.use('/', healthRouter);
 apiV1Router.use('/scenarios', scenarioRouter);
 apiV1Router.use('/analysis', analysisRouter);
+apiV1Router.use('/knowledge', knowledgeRouter);

@@ -39,6 +39,12 @@ export const config = {
   databaseUrl: sanitizeDatabaseUrl(process.env.DATABASE_URL),
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
   logLevel: process.env.LOG_LEVEL || 'info',
+  groqApiKey: process.env.GROQ_API_KEY || '',
+  groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  groqTimeoutMs: parseInt(process.env.GROQ_TIMEOUT_MS || '30000', 10),
+  groqMaxRetries: parseInt(process.env.GROQ_MAX_RETRIES || '3', 10),
+  embeddingModel: process.env.EMBEDDING_MODEL || 'Xenova/bge-small-en-v1.5',
+  embeddingDimension: parseInt(process.env.EMBEDDING_DIMENSION || '384', 10),
 } as const;
 
 export type Config = typeof config;
