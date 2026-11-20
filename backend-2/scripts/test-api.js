@@ -233,6 +233,31 @@ async function runTests() {
     assert(analysisStatusRes.data.id === firstAnalysis.id, 'Analysis status ID matches');
     assert(!!analysisStatusRes.data.status, `Analysis status is '${analysisStatusRes.data.status}'`);
 
+    // 11b. Test Knowledge Topics GET /api/v1/knowledge/topics
+    console.log('\n11b. Testing Knowledge Topics GET /api/v1/knowledge/topics ...');
+    const topicsRes = await makeRequest('GET', '/api/v1/knowledge/topics');
+    assert(topicsRes.status === 200, 'Knowledge topics endpoint is 200');
+    assert(Array.isArray(topicsRes.data), 'Topics response is an array');
+    assert(topicsRes.data.length > 0, `Topics array has items (found ${topicsRes.data.length})`);
+
+    // 11c. Test Knowledge Documents List GET /api/v1/knowledge
+    console.log('\n11c. Testing Knowledge Documents List GET /api/v1/knowledge?limit=3 ...');
+    const docsRes = await makeRequest('GET', '/api/v1/knowledge?limit=3');
+    assert(docsRes.status === 200, 'Knowledge docs endpoint is 200');
+    assert(Array.isArray(docsRes.data), 'Knowledge docs response is an array');
+    assert(docsRes.data.length > 0, `Knowledge docs array has items (found ${docsRes.data.length})`);
+
+    // 11d. Test Analysis Follow-Up POST /api/v1/analysis/:id/follow-up
+    console.log(`\n11d. Testing Analysis Follow-Up POST /api/v1/analysis/${firstAnalysis.id}/follow-up ...`);
+    const followUpRes = await makeRequest('POST', `/api/v1/analysis/${firstAnalysis.id}/follow-up`, {
+      question: 'How do the central defenders adjust if the primary presser is beaten on the outside?',
+    });
+    assert(followUpRes.status === 200, 'Follow-up endpoint returns HTTP 200');
+    assert(followUpRes.data?.analysis_id === firstAnalysis.id, 'Follow-up response matches analysis ID');
+    assert(typeof followUpRes.data?.answer === 'string' && followUpRes.data.answer.length > 10, 'Follow-up returns grounded answer text');
+    assert(Array.isArray(followUpRes.data?.relevant_players_mentioned), 'Follow-up mentions relevant players');
+    assert(Array.isArray(followUpRes.data?.clarified_tactics), 'Follow-up returns clarified tactics array');
+
     // 12. Test Validation Error Handling
     console.log('\n12. Testing Validation Error Handling (Zod schema rejection) ...');
     const invalidPayload = {
