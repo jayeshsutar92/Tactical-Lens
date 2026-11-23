@@ -208,10 +208,10 @@ export const ScenarioBuilderPage: FC = () => {
   // Change Formation and Auto-Populate Player Coordinates
   const handleFormationChange = (team: 'attacking' | 'defending', formation: FormationPreset) => {
     if (team === 'attacking') {
-      const newSetup = createDefaultTeamSetup('attacking', formation, attackingTeam.name)
+      const newSetup = createDefaultTeamSetup('attacking', formation, attackingTeam.name, attackingTeam.players)
       setAttackingTeam(newSetup)
     } else {
-      const newSetup = createDefaultTeamSetup('defending', formation, defendingTeam.name)
+      const newSetup = createDefaultTeamSetup('defending', formation, defendingTeam.name, defendingTeam.players)
       setDefendingTeam(newSetup)
     }
     setSelectedPlayer(null)
