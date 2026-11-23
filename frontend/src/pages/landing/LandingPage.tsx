@@ -249,7 +249,7 @@ export const LandingPage: FC = () => {
           </div>
 
           <h2 className="tl-hero-title">
-            Demystifying Football Tactics with{' '}
+            Simplifying Football Tactics with{' '}
             <span className="tl-hero-title-highlight">Spatial Pitch Geometry</span> & AI
           </h2>
 
