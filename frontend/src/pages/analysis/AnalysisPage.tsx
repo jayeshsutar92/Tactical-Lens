@@ -135,7 +135,7 @@ export const AnalysisPage: FC = () => {
               Session Archive
             </Button>
           </Link>
-          <Link to="/scenarios/builder">
+          <Link to="/builder">
             <Button variant="outline" size="sm" icon={<Compass size={14} />}>
               Build Custom Scenario
             </Button>
@@ -153,7 +153,7 @@ export const AnalysisPage: FC = () => {
           title="No Scenarios Available"
           description="Create or seed match scenarios in PostgreSQL to initiate AI tactical analysis."
           action={
-            <Link to="/scenarios/builder">
+            <Link to="/builder">
               <Button variant="primary">Create Scenario</Button>
             </Link>
           }

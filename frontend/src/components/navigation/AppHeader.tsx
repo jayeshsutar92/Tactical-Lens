@@ -1,6 +1,6 @@
 import { type FC } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Sparkles, Terminal } from 'lucide-react'
+import { Home, Sparkles, Terminal } from 'lucide-react'
 import { StatusIndicator } from '../common/StatusIndicator.tsx'
 import { useHealthCheck } from '../../hooks/useHealthCheck.ts'
 
@@ -38,7 +38,7 @@ export const AppHeader: FC = () => {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <Link
-          to="/landing"
+          to="/"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -52,9 +52,10 @@ export const AppHeader: FC = () => {
             textDecoration: 'none',
             transition: 'all var(--transition-fast)',
           }}
+          title="Return to TacticalLens Homepage"
         >
-          <BookOpen size={12} />
-          <span>Product Tour</span>
+          <Home size={12} />
+          <span>Home</span>
         </Link>
 
         <StatusIndicator status={status} />

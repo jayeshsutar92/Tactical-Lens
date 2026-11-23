@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from '../layouts/AppLayout.tsx'
 import {
   AnalysisDetailPage,
@@ -14,16 +14,32 @@ import {
 
 export const router = createBrowserRouter([
   {
-    path: '/landing',
+    path: '/',
     element: <LandingPage />,
+  },
+  {
+    path: '/landing',
+    element: <Navigate to="/" replace />,
   },
   {
     path: '/',
     element: <AppLayout />,
     children: [
       {
-        index: true,
+        path: 'dashboard',
         element: <DashboardPage />,
+      },
+      {
+        path: 'builder',
+        element: <ScenarioBuilderPage />,
+      },
+      {
+        path: 'scenarios/new',
+        element: <ScenarioBuilderPage />,
+      },
+      {
+        path: 'scenarios/builder',
+        element: <ScenarioBuilderPage />,
       },
       {
         path: 'scenarios',
@@ -32,10 +48,6 @@ export const router = createBrowserRouter([
       {
         path: 'scenarios/:id',
         element: <ScenarioDetailPage />,
-      },
-      {
-        path: 'scenarios/builder',
-        element: <ScenarioBuilderPage />,
       },
       {
         path: 'analysis',

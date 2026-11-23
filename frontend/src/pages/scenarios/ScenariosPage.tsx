@@ -48,7 +48,7 @@ export const ScenariosPage: FC = () => {
             Select a match situation to launch deep tactical pressing and spatial analysis.
           </p>
         </div>
-        <Link to="/scenarios/builder">
+        <Link to="/builder">
           <Button variant="primary" icon={<Plus size={16} />}>
             Create Scenario
           </Button>
@@ -149,7 +149,7 @@ export const ScenariosPage: FC = () => {
           title="No Scenarios Found"
           description="No scenarios match the selected filter. Try choosing another phase or create a new custom scenario."
           action={
-            <Link to="/scenarios/builder">
+            <Link to="/builder">
               <Button variant="primary" icon={<Plus size={16} />}>
                 Create Custom Scenario
               </Button>

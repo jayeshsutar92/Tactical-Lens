@@ -11,11 +11,18 @@ export const NotFoundPage: FC = () => {
         title="404 - Pitch Zone Not Found"
         description="The tactical route or match scenario you are looking for does not exist."
         action={
-          <Link to="/">
-            <Button variant="primary" icon={<Home size={16} />}>
-              Back to Dashboard
-            </Button>
-          </Link>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <Link to="/">
+              <Button variant="primary" icon={<Home size={16} />}>
+                Back to Home
+              </Button>
+            </Link>
+            <Link to="/dashboard">
+              <Button variant="secondary">
+                Dashboard
+              </Button>
+            </Link>
+          </div>
         }
       />
     </div>

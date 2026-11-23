@@ -195,7 +195,7 @@ export const LandingPage: FC = () => {
       <header className="tl-nav">
         <div className="tl-landing-container">
           <div className="tl-nav-inner">
-            <Link to="/landing" className="tl-brand">
+            <Link to="/" className="tl-brand">
               <div className="tl-brand-icon">
                 <ShieldAlert size={22} />
               </div>
@@ -229,10 +229,10 @@ export const LandingPage: FC = () => {
             </nav>
 
             <div className="tl-nav-actions">
-              <Link to="/" className="pl-btn pl-btn-secondary pl-btn-sm">
+              <Link to="/dashboard" className="pl-btn pl-btn-secondary pl-btn-sm">
                 Dashboard
               </Link>
-              <Link to="/scenarios/builder" className="pl-btn pl-btn-primary pl-btn-sm">
+              <Link to="/builder" className="pl-btn pl-btn-primary pl-btn-sm">
                 Scenario Builder
               </Link>
             </div>
@@ -261,7 +261,7 @@ export const LandingPage: FC = () => {
           </p>
 
           <div className="tl-hero-ctas">
-            <Link to="/scenarios/builder" className="pl-btn pl-btn-primary pl-btn-lg">
+            <Link to="/builder" className="pl-btn pl-btn-primary pl-btn-lg">
               <span>Launch Scenario Builder</span>
               <ArrowRight size={18} />
             </Link>
@@ -662,7 +662,7 @@ export const LandingPage: FC = () => {
           </div>
 
           <div style={{ marginTop: '40px', textAlign: 'center' }}>
-            <Link to="/scenarios/builder" className="pl-btn pl-btn-primary pl-btn-md">
+            <Link to="/builder" className="pl-btn pl-btn-primary pl-btn-md">
               <span>Try Scenario Builder Now</span>
               <ChevronRight size={16} />
             </Link>
@@ -801,7 +801,7 @@ export const LandingPage: FC = () => {
               clarity you need.
             </p>
             <div className="tl-cta-buttons">
-              <Link to="/scenarios/builder" className="pl-btn pl-btn-primary pl-btn-lg">
+              <Link to="/builder" className="pl-btn pl-btn-primary pl-btn-lg">
                 <PlusCircle size={18} />
                 <span>Create Custom Scenario</span>
               </Link>
@@ -809,7 +809,7 @@ export const LandingPage: FC = () => {
                 <Zap size={18} />
                 <span>Launch Tactical Analysis</span>
               </Link>
-              <Link to="/" className="pl-btn pl-btn-outline pl-btn-lg">
+              <Link to="/dashboard" className="pl-btn pl-btn-outline pl-btn-lg">
                 <Compass size={18} />
                 <span>Go to Dashboard</span>
               </Link>
@@ -824,7 +824,7 @@ export const LandingPage: FC = () => {
           <div className="tl-footer-grid">
             {/* Col 1 */}
             <div className="tl-footer-brand">
-              <Link to="/landing" className="tl-brand">
+              <Link to="/" className="tl-brand">
                 <div className="tl-brand-icon">
                   <ShieldAlert size={20} />
                 </div>
@@ -846,7 +846,7 @@ export const LandingPage: FC = () => {
               <h5 className="tl-footer-heading">Navigation</h5>
               <ul className="tl-footer-links">
                 <li>
-                  <Link to="/" className="tl-footer-link">
+                  <Link to="/dashboard" className="tl-footer-link">
                     Dashboard
                   </Link>
                 </li>
@@ -856,7 +856,7 @@ export const LandingPage: FC = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/scenarios/builder" className="tl-footer-link">
+                  <Link to="/builder" className="tl-footer-link">
                     Scenario Builder
                   </Link>
                 </li>

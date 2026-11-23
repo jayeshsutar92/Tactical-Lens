@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BookOpen,
   Compass,
+  Home,
   PlusCircle,
   Shield,
   Zap,
@@ -78,9 +79,9 @@ export const DashboardPage: FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <Link to="/landing">
-            <Button variant="outline" size="lg" icon={<BookOpen size={18} />}>
-              Product Tour
+          <Link to="/">
+            <Button variant="outline" size="lg" icon={<Home size={18} />}>
+              Landing Overview
             </Button>
           </Link>
           <Link to="/scenarios">
@@ -334,7 +335,7 @@ export const DashboardPage: FC = () => {
               Set up customized team formations, player roles, and ball coordinates in the Scenario Builder.
             </p>
           </div>
-          <Link to="/scenarios/builder">
+          <Link to="/builder">
             <Button variant="outline" icon={<PlusCircle size={16} />}>
               Open Scenario Builder
             </Button>

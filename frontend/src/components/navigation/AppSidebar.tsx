@@ -1,12 +1,11 @@
 import { type FC } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import {
   Compass,
   History,
   LayoutDashboard,
   PlusCircle,
   ShieldAlert,
-  Sparkles,
   Zap,
 } from 'lucide-react'
 
@@ -18,26 +17,28 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/scenarios', label: 'Match Scenarios', icon: Compass },
-  { to: '/scenarios/builder', label: 'Scenario Builder', icon: PlusCircle },
+  { to: '/builder', label: 'Scenario Builder', icon: PlusCircle },
   { to: '/analysis', label: 'Tactical Analysis', icon: Zap, badge: 'AI' },
   { to: '/history', label: 'Analysis History', icon: History },
-  { to: '/landing', label: 'Product Tour', icon: Sparkles },
 ]
 
 export const AppSidebar: FC = () => {
   return (
     <aside className="pl-sidebar">
-      {/* Brand Header */}
-      <div
+      {/* Brand Header linking to Homepage */}
+      <Link
+        to="/"
         style={{
           padding: '24px 20px',
           borderBottom: '1px solid var(--border-default)',
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
+          textDecoration: 'none',
         }}
+        title="TacticalLens Home"
       >
         <div
           style={{
@@ -50,6 +51,7 @@ export const AppSidebar: FC = () => {
             justifyContent: 'center',
             boxShadow: '0 0 12px var(--color-pitch-glow)',
             color: 'var(--text-inverse)',
+            flexShrink: 0,
           }}
         >
           <ShieldAlert size={20} />
@@ -78,7 +80,7 @@ export const AppSidebar: FC = () => {
             Tactical AI Intelligence
           </p>
         </div>
-      </div>
+      </Link>
 
       {/* Navigation Links */}
       <nav style={{ padding: '16px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
