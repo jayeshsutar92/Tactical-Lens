@@ -1,5 +1,6 @@
 import { type FC } from 'react'
-import { Sparkles, Terminal } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { BookOpen, Sparkles, Terminal } from 'lucide-react'
 import { StatusIndicator } from '../common/StatusIndicator.tsx'
 import { useHealthCheck } from '../../hooks/useHealthCheck.ts'
 
@@ -35,7 +36,27 @@ export const AppHeader: FC = () => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <Link
+          to="/landing"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.75rem',
+            padding: '4px 10px',
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.25)',
+            borderRadius: 'var(--radius-full)',
+            color: 'var(--color-tactical-light)',
+            textDecoration: 'none',
+            transition: 'all var(--transition-fast)',
+          }}
+        >
+          <BookOpen size={12} />
+          <span>Product Tour</span>
+        </Link>
+
         <StatusIndicator status={status} />
 
         <div

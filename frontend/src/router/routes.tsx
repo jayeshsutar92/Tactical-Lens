@@ -5,6 +5,7 @@ import {
   AnalysisPage,
   DashboardPage,
   HistoryPage,
+  LandingPage,
   NotFoundPage,
   ScenarioBuilderPage,
   ScenarioDetailPage,
@@ -12,6 +13,10 @@ import {
 } from '../pages/index.ts'
 
 export const router = createBrowserRouter([
+  {
+    path: '/landing',
+    element: <LandingPage />,
+  },
   {
     path: '/',
     element: <AppLayout />,

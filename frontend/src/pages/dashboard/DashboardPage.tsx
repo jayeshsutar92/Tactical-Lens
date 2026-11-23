@@ -78,6 +78,11 @@ export const DashboardPage: FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <Link to="/landing">
+            <Button variant="outline" size="lg" icon={<BookOpen size={18} />}>
+              Product Tour
+            </Button>
+          </Link>
           <Link to="/scenarios">
             <Button variant="primary" size="lg" icon={<Compass size={18} />}>
               Explore Scenarios

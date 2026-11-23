@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   PlusCircle,
   ShieldAlert,
+  Sparkles,
   Zap,
 } from 'lucide-react'
 
@@ -22,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/scenarios/builder', label: 'Scenario Builder', icon: PlusCircle },
   { to: '/analysis', label: 'Tactical Analysis', icon: Zap, badge: 'AI' },
   { to: '/history', label: 'Analysis History', icon: History },
+  { to: '/landing', label: 'Product Tour', icon: Sparkles },
 ]
 
 export const AppSidebar: FC = () => {
