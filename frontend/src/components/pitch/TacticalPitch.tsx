@@ -2,6 +2,7 @@ import {
   type FC,
   type MouseEvent,
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react'
@@ -20,6 +21,7 @@ export interface TacticalPitchProps {
   ballPosition: BallPosition
   selectedPlayerId?: string | null
   onSelectPlayer?: (player: Player, team: 'attacking' | 'defending') => void
+  onDeselectPlayer?: () => void
   selectedLaneIndex?: number | null
   onSelectLane?: (lane: PassingLaneMetric, index: number) => void
   selectedTrap?: boolean
@@ -47,6 +49,7 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
   ballPosition,
   selectedPlayerId,
   onSelectPlayer,
+  onDeselectPlayer,
   selectedLaneIndex,
   onSelectLane,
   selectedTrap = false,
@@ -75,6 +78,50 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
     id: string
     type: 'attacking' | 'defending' | 'ball'
   } | null>(null)
+  const draggingEntityRef = useRef<{
+    id: string
+    type: 'attacking' | 'defending' | 'ball'
+  } | null>(null)
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null)
+  const hasDraggedRef = useRef<boolean>(false)
+
+  const stopDragging = useCallback(() => {
+    if (draggingEntityRef.current || draggingEntity) {
+      draggingEntityRef.current = null
+      setDraggingEntity(null)
+    }
+  }, [draggingEntity])
+
+  // Global listeners to cleanly release dragging and allow Escape to deselect
+  useEffect(() => {
+    const handleGlobalUp = () => {
+      if (draggingEntityRef.current) {
+        draggingEntityRef.current = null
+        setDraggingEntity(null)
+      }
+    }
+
+    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (draggingEntityRef.current) {
+          draggingEntityRef.current = null
+          setDraggingEntity(null)
+        }
+        setIsBallSelected(false)
+        onDeselectPlayer?.()
+      }
+    }
+
+    window.addEventListener('pointerup', handleGlobalUp)
+    window.addEventListener('mouseup', handleGlobalUp)
+    window.addEventListener('keydown', handleGlobalKeyDown)
+
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalUp)
+      window.removeEventListener('mouseup', handleGlobalUp)
+      window.removeEventListener('keydown', handleGlobalKeyDown)
+    }
+  }, [onDeselectPlayer])
 
   // Converts client mouse event into pitch meters coordinates (x in [0, 105], y in [0, 68])
   const getPitchCoords = useCallback((e: MouseEvent<SVGSVGElement>): { x: number; y: number } => {
@@ -97,60 +144,116 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
     const coords = getPitchCoords(e)
     setHoveredCoords(coords)
 
-    if (editable && draggingEntity) {
-      if (draggingEntity.type === 'ball') {
+    const activeEntity = draggingEntityRef.current || draggingEntity
+
+    if (editable && activeEntity) {
+      // If mouse button is not held down, stop dragging immediately
+      if (e.buttons !== 1) {
+        stopDragging()
+        return
+      }
+
+      if (dragStartPosRef.current) {
+        const dx = Math.abs(e.clientX - dragStartPosRef.current.x)
+        const dy = Math.abs(e.clientY - dragStartPosRef.current.y)
+        if (dx > 3 || dy > 3) {
+          hasDraggedRef.current = true
+        }
+      }
+
+      if (activeEntity.type === 'ball') {
         onUpdateBallPosition?.(coords)
       } else {
-        onUpdatePlayerPosition?.(draggingEntity.id, draggingEntity.type, coords)
+        onUpdatePlayerPosition?.(activeEntity.id, activeEntity.type, coords)
       }
     }
   }
 
-  const handlePitchClick = (e: MouseEvent<SVGSVGElement>) => {
+  const handlePitchClick = () => {
     if (!editable) return
 
-    const coords = getPitchCoords(e)
-
-    if (isBallSelected) {
-      onUpdateBallPosition?.(coords)
+    // If a drag action just ended, do not trigger pitch click
+    if (hasDraggedRef.current) {
+      hasDraggedRef.current = false
       return
     }
 
+    // Clicking empty pitch space deselects selected player or ball
+    if (isBallSelected) {
+      setIsBallSelected(false)
+    }
     if (selectedPlayerId) {
-      // Find whether selected player belongs to attacking or defending team
-      const isAtt = attackingTeam.players.some((p) => p.id === selectedPlayerId)
-      const team = isAtt ? 'attacking' : 'defending'
-      onUpdatePlayerPosition?.(selectedPlayerId, team, coords)
+      onDeselectPlayer?.()
     }
   }
 
   const handleMouseUp = () => {
-    if (draggingEntity) {
-      setDraggingEntity(null)
+    stopDragging()
+  }
+
+  const handleMouseLeave = () => {
+    setHoveredCoords(null)
+    stopDragging()
+  }
+
+  const handlePlayerPointerDown = (
+    e: MouseEvent | React.PointerEvent,
+    player: Player,
+    team: 'attacking' | 'defending',
+  ) => {
+    e.stopPropagation()
+    dragStartPosRef.current = { x: e.clientX, y: e.clientY }
+    hasDraggedRef.current = false
+
+    if (editable) {
+      const entity = { id: player.id, type: team }
+      draggingEntityRef.current = entity
+      setDraggingEntity(entity)
     }
   }
 
-  const handlePlayerMouseDown = (
+  const handlePlayerClick = (
     e: MouseEvent,
     player: Player,
     team: 'attacking' | 'defending',
   ) => {
     e.stopPropagation()
-    setIsBallSelected(false)
-    onSelectPlayer?.(player, team)
 
-    if (editable) {
-      setDraggingEntity({ id: player.id, type: team })
+    if (hasDraggedRef.current) {
+      hasDraggedRef.current = false
+      return
+    }
+
+    // If the clicked player is already selected, deselect it
+    if (selectedPlayerId === player.id) {
+      onDeselectPlayer?.()
+    } else {
+      setIsBallSelected(false)
+      onSelectPlayer?.(player, team)
     }
   }
 
-  const handleBallMouseDown = (e: MouseEvent) => {
+  const handleBallPointerDown = (e: MouseEvent | React.PointerEvent) => {
     e.stopPropagation()
-    setIsBallSelected(true)
+    dragStartPosRef.current = { x: e.clientX, y: e.clientY }
+    hasDraggedRef.current = false
 
     if (editable) {
-      setDraggingEntity({ id: 'match_ball', type: 'ball' })
+      const entity = { id: 'match_ball', type: 'ball' as const }
+      draggingEntityRef.current = entity
+      setDraggingEntity(entity)
     }
+  }
+
+  const handleBallClick = (e: MouseEvent) => {
+    e.stopPropagation()
+
+    if (hasDraggedRef.current) {
+      hasDraggedRef.current = false
+      return
+    }
+
+    setIsBallSelected((prev) => !prev)
   }
 
   // Calculate defending block bounding box if compactness metrics exist
@@ -325,8 +428,11 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
           preserveAspectRatio="xMidYMid meet"
           style={{ width: '100%', height: '100%', display: 'block' }}
           onMouseMove={handleMouseMove}
-          onMouseLeave={() => setHoveredCoords(null)}
+          onPointerMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          onPointerLeave={handleMouseLeave}
           onMouseUp={handleMouseUp}
+          onPointerUp={handleMouseUp}
           onClick={handlePitchClick}
         >
           <defs>
@@ -630,8 +736,9 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
                   key={player.id}
                   transform={`translate(${player.position.x}, ${player.position.y})`}
                   style={{ cursor: editable ? 'grab' : 'pointer' }}
-                  onMouseDown={(e) => handlePlayerMouseDown(e, player, 'attacking')}
-                  onClick={(e) => handlePlayerMouseDown(e, player, 'attacking')}
+                  onMouseDown={(e) => handlePlayerPointerDown(e, player, 'attacking')}
+                  onPointerDown={(e) => handlePlayerPointerDown(e, player, 'attacking')}
+                  onClick={(e) => handlePlayerClick(e, player, 'attacking')}
                 >
                   {/* Selection Halo */}
                   {isSelected && (
@@ -723,7 +830,7 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
                         textAnchor="middle"
                         fontFamily="var(--font-sans)"
                       >
-                        {player.role} &bull; {player.name.split(' ').pop()}
+                        {player.role} &bull; {(player.name ? player.name.split(' ').pop() : '') || player.role}
                       </text>
                     </g>
                   )}
@@ -760,8 +867,9 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
                   key={player.id}
                   transform={`translate(${player.position.x}, ${player.position.y})`}
                   style={{ cursor: editable ? 'grab' : 'pointer' }}
-                  onMouseDown={(e) => handlePlayerMouseDown(e, player, 'defending')}
-                  onClick={(e) => handlePlayerMouseDown(e, player, 'defending')}
+                  onMouseDown={(e) => handlePlayerPointerDown(e, player, 'defending')}
+                  onPointerDown={(e) => handlePlayerPointerDown(e, player, 'defending')}
+                  onClick={(e) => handlePlayerClick(e, player, 'defending')}
                 >
                   {/* Selection Halo */}
                   {isSelected && (
@@ -891,7 +999,7 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
                         textAnchor="middle"
                         fontFamily="var(--font-sans)"
                       >
-                        {player.role} &bull; {player.name.split(' ').pop()}
+                        {player.role} &bull; {(player.name ? player.name.split(' ').pop() : '') || player.role}
                       </text>
                     </g>
                   )}
@@ -905,7 +1013,9 @@ export const TacticalPitch: FC<TacticalPitchProps> = ({
             id="matchBall"
             transform={`translate(${ballPosition.x}, ${ballPosition.y})`}
             style={{ cursor: editable ? 'grab' : 'pointer' }}
-            onMouseDown={handleBallMouseDown}
+            onMouseDown={handleBallPointerDown}
+            onPointerDown={handleBallPointerDown}
+            onClick={handleBallClick}
           >
             {/* Ball Glow */}
             <circle cx="0" cy="0" r="2.8" fill="url(#ballGlow)" />

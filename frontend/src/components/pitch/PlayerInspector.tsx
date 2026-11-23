@@ -153,6 +153,7 @@ export const PlayerInspector: FC<PlayerInspectorProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '12px' }}>
               <Input
+                id="inspector-player-number"
                 label="Number"
                 type="number"
                 min={1}
@@ -161,9 +162,11 @@ export const PlayerInspector: FC<PlayerInspectorProps> = ({
                 onChange={handleNumberChange}
               />
               <Input
+                id="inspector-player-name"
                 label="Player Name"
                 value={player.name}
                 onChange={handleNameChange}
+                placeholder="Enter player name"
               />
             </div>
 

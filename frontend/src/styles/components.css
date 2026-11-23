@@ -243,6 +243,25 @@
   box-shadow: 0 0 0 2px var(--color-pitch-glow);
 }
 
+select.pl-input {
+  cursor: pointer;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+}
+
+select.pl-input option {
+  background-color: #0d1527;
+  color: #f8fafc;
+  padding: 8px 12px;
+}
+
+select.pl-input option:hover,
+select.pl-input option:focus,
+select.pl-input option:checked {
+  background-color: #172544;
+  color: #38bdf8;
+}
+
 .pl-input::placeholder {
   color: var(--text-dim);
 }

@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  CustomSelect,
   Input,
 } from '../../components/common/index.ts'
 import { PlayerInspector, TacticalPitch } from '../../components/pitch/index.ts'
@@ -31,6 +32,44 @@ import {
   createDefaultTeamSetup,
 } from '../../utils/formations.ts'
 import { clamp, getPitchZone } from '../../utils/zones.ts'
+
+const MATCH_PHASE_OPTIONS = [
+  {
+    value: 'high_press',
+    label: 'High Press (Final Third Possession Win)',
+    description: 'Aggressive press forcing turnovers in opposition build-up third',
+  },
+  {
+    value: 'counter_press',
+    label: 'Counter-Press (Immediate 5-Second Transition)',
+    description: 'Immediate Gegenpressing collapse upon turnover',
+  },
+  {
+    value: 'mid_block',
+    label: 'Mid-Block (Compact Zonal Corridor Trap)',
+    description: 'Denying progression through midfield central pockets & half-spaces',
+  },
+  {
+    value: 'low_block',
+    label: 'Low-Block (Deep Penalty Box Shield & Haramball)',
+    description: 'Ultra-compact defensive lines shielding the penalty box',
+  },
+  {
+    value: 'defensive_transition',
+    label: 'Defensive Transition (Rest Defense Recovery)',
+    description: 'Recovery runs and rest-defense organization behind the ball',
+  },
+]
+
+const COMPETITION_OPTIONS = [
+  { value: 'Premier League', label: 'Premier League' },
+  { value: 'UEFA Champions League', label: 'UEFA Champions League' },
+  { value: 'La Liga & Copa del Rey', label: 'La Liga & Copa del Rey' },
+  { value: 'Serie A & Coppa Italia', label: 'Serie A & Coppa Italia' },
+  { value: 'Bundesliga', label: 'Bundesliga' },
+  { value: 'International & World Cup', label: 'International & World Cup' },
+  { value: 'Tactical Simulation & Training', label: 'Tactical Simulation & Training' },
+]
 
 export const ScenarioBuilderPage: FC = () => {
   const navigate = useNavigate()
@@ -119,6 +158,35 @@ export const ScenarioBuilderPage: FC = () => {
       setSelectedPlayer({
         ...selectedPlayer,
         player: { ...selectedPlayer.player, position: clampedPos },
+      })
+    }
+  }
+
+  // Update entire player state (name, number, role, position)
+  const handleUpdatePlayer = (
+    updatedPlayer: Player,
+    team: 'attacking' | 'defending',
+  ) => {
+    if (team === 'attacking') {
+      setAttackingTeam((prev) => ({
+        ...prev,
+        players: prev.players.map((p) =>
+          p.id === updatedPlayer.id ? updatedPlayer : p,
+        ),
+      }))
+    } else {
+      setDefendingTeam((prev) => ({
+        ...prev,
+        players: prev.players.map((p) =>
+          p.id === updatedPlayer.id ? updatedPlayer : p,
+        ),
+      }))
+    }
+
+    if (selectedPlayer && selectedPlayer.player.id === updatedPlayer.id) {
+      setSelectedPlayer({
+        team,
+        player: updatedPlayer,
       })
     }
   }
@@ -249,7 +317,16 @@ export const ScenarioBuilderPage: FC = () => {
             defendingTeam={defendingTeam}
             ballPosition={ballPosition}
             selectedPlayerId={selectedPlayer?.player.id}
-            onSelectPlayer={(p, team) => setSelectedPlayer({ player: p, team })}
+            onSelectPlayer={(p, team) => {
+              if (!p) {
+                setSelectedPlayer(null)
+              } else if (selectedPlayer?.player.id === p.id) {
+                setSelectedPlayer(null)
+              } else {
+                setSelectedPlayer({ player: p, team: team || 'attacking' })
+              }
+            }}
+            onDeselectPlayer={() => setSelectedPlayer(null)}
             editable
             onUpdatePlayerPosition={handleUpdatePlayerPosition}
             onUpdateBallPosition={handleUpdateBallPosition}
@@ -272,7 +349,7 @@ export const ScenarioBuilderPage: FC = () => {
           >
             <Info size={16} color="var(--color-pitch)" />
             <span>
-              <strong>Tip:</strong> Drag or click players to reposition. Select a player and click on the pitch to move them instantly.
+              <strong>Tip:</strong> Drag to reposition players. Click a player to select/deselect, click empty pitch or press <code>Esc</code> to deselect.
             </span>
           </div>
         </div>
@@ -290,13 +367,13 @@ export const ScenarioBuilderPage: FC = () => {
             onClose={() => setSelectedPlayer(null)}
             onUpdatePlayer={(upd) => {
               if (!selectedPlayer) return
-              handleUpdatePlayerPosition(upd.id, selectedPlayer.team, upd.position)
+              handleUpdatePlayer(upd, selectedPlayer.team)
             }}
           />
 
           {/* Form Tabs */}
           <Card>
-            <CardHeader style={{ padding: '12px 16px', display: 'flex', gap: '6px' }}>
+            <CardHeader style={{ padding: '12px 16px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <Button
                 variant={activeTab === 'basic' ? 'primary' : 'ghost'}
                 size="sm"
@@ -345,20 +422,12 @@ export const ScenarioBuilderPage: FC = () => {
                     placeholder="e.g. Turnover in central Zone 14 leading to immediate press"
                   />
 
-                  <div className="pl-field-group">
-                    <label className="pl-label">Match Phase</label>
-                    <select
-                      className="pl-input"
-                      value={matchPhase}
-                      onChange={(e) => setMatchPhase(e.target.value as MatchPhase)}
-                    >
-                      <option value="high_press">High Press (Final Third Possession Win)</option>
-                      <option value="counter_press">Counter-Press (Immediate 5-Second Transition)</option>
-                      <option value="mid_block">Mid-Block (Compact Zonal Corridor Trap)</option>
-                      <option value="low_block">Low-Block (Deep Penalty Box Shield)</option>
-                      <option value="defensive_transition">Defensive Transition (Rest Defense Recovery)</option>
-                    </select>
-                  </div>
+                  <CustomSelect
+                    label="Match Phase"
+                    value={matchPhase}
+                    onChange={(val) => setMatchPhase(val as MatchPhase)}
+                    options={MATCH_PHASE_OPTIONS}
+                  />
 
                   <div className="pl-field-group">
                     <label className="pl-label">Tactical Narrative (Description)</label>
@@ -384,25 +453,95 @@ export const ScenarioBuilderPage: FC = () => {
                     }
                   />
 
-                  <div className="pl-field-group">
-                    <label className="pl-label">Formation Preset</label>
-                    <select
-                      className="pl-input"
-                      value={attackingTeam.formation}
-                      onChange={(e) =>
-                        handleFormationChange('attacking', e.target.value as FormationPreset)
-                      }
-                    >
-                      {AVAILABLE_FORMATIONS.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <CustomSelect
+                    label="Formation Preset"
+                    value={attackingTeam.formation}
+                    onChange={(val) =>
+                      handleFormationChange('attacking', val as FormationPreset)
+                    }
+                    options={AVAILABLE_FORMATIONS.map((f) => ({
+                      value: f.id,
+                      label: f.name,
+                    }))}
+                  />
 
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                    {attackingTeam.players.length} players placed on pitch. Click on players to reposition them.
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        Attacking Squad ({attackingTeam.players.length} Players)
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Edit names directly &bull; Click to inspect
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        maxHeight: '220px',
+                        overflowY: 'auto',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: 'var(--bg-canvas)',
+                        padding: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'var(--border-strong) transparent',
+                      }}
+                    >
+                      {attackingTeam.players.map((p) => {
+                        const isSelected = selectedPlayer?.player.id === p.id
+                        return (
+                          <div
+                            key={p.id}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '32px 52px 1fr 64px',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '4px 8px',
+                              borderRadius: 'var(--radius-sm)',
+                              backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
+                              border: isSelected ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid transparent',
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: 'var(--font-mono)',
+                                fontWeight: 700,
+                                fontSize: '0.8125rem',
+                                color: '#38bdf8',
+                                textAlign: 'center',
+                              }}
+                            >
+                              #{p.number}
+                            </span>
+                            <Badge variant="tactical" size="sm" style={{ padding: '2px 4px', fontSize: '0.6875rem', textAlign: 'center' }}>
+                              {p.role}
+                            </Badge>
+                            <input
+                              className="pl-input"
+                              style={{ height: '30px', padding: '4px 8px', fontSize: '0.8125rem' }}
+                              value={p.name}
+                              onChange={(e) =>
+                                handleUpdatePlayer({ ...p, name: e.target.value }, 'attacking')
+                              }
+                              onFocus={() => setSelectedPlayer({ player: p, team: 'attacking' })}
+                              placeholder="Player Name"
+                            />
+                            <Button
+                              variant={isSelected ? 'secondary' : 'ghost'}
+                              size="sm"
+                              style={{ height: '26px', padding: '2px 6px', fontSize: '0.6875rem' }}
+                              onClick={() => setSelectedPlayer(isSelected ? null : { player: p, team: 'attacking' })}
+                            >
+                              {isSelected ? 'Active' : 'Select'}
+                            </Button>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -418,25 +557,95 @@ export const ScenarioBuilderPage: FC = () => {
                     }
                   />
 
-                  <div className="pl-field-group">
-                    <label className="pl-label">Formation Preset</label>
-                    <select
-                      className="pl-input"
-                      value={defendingTeam.formation}
-                      onChange={(e) =>
-                        handleFormationChange('defending', e.target.value as FormationPreset)
-                      }
-                    >
-                      {AVAILABLE_FORMATIONS.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <CustomSelect
+                    label="Formation Preset"
+                    value={defendingTeam.formation}
+                    onChange={(val) =>
+                      handleFormationChange('defending', val as FormationPreset)
+                    }
+                    options={AVAILABLE_FORMATIONS.map((f) => ({
+                      value: f.id,
+                      label: f.name,
+                    }))}
+                  />
 
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                    {defendingTeam.players.length} players placed on pitch. Click on players to reposition them.
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        Defending Squad ({defendingTeam.players.length} Players)
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Edit names directly &bull; Click to inspect
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        maxHeight: '220px',
+                        overflowY: 'auto',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: 'var(--bg-canvas)',
+                        padding: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'var(--border-strong) transparent',
+                      }}
+                    >
+                      {defendingTeam.players.map((p) => {
+                        const isSelected = selectedPlayer?.player.id === p.id
+                        return (
+                          <div
+                            key={p.id}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '32px 52px 1fr 64px',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '4px 8px',
+                              borderRadius: 'var(--radius-sm)',
+                              backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
+                              border: isSelected ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: 'var(--font-mono)',
+                                fontWeight: 700,
+                                fontSize: '0.8125rem',
+                                color: '#10b981',
+                                textAlign: 'center',
+                              }}
+                            >
+                              #{p.number}
+                            </span>
+                            <Badge variant="pitch" size="sm" style={{ padding: '2px 4px', fontSize: '0.6875rem', textAlign: 'center' }}>
+                              {p.role}
+                            </Badge>
+                            <input
+                              className="pl-input"
+                              style={{ height: '30px', padding: '4px 8px', fontSize: '0.8125rem' }}
+                              value={p.name}
+                              onChange={(e) =>
+                                handleUpdatePlayer({ ...p, name: e.target.value }, 'defending')
+                              }
+                              onFocus={() => setSelectedPlayer({ player: p, team: 'defending' })}
+                              placeholder="Player Name"
+                            />
+                            <Button
+                              variant={isSelected ? 'secondary' : 'ghost'}
+                              size="sm"
+                              style={{ height: '26px', padding: '2px 6px', fontSize: '0.6875rem' }}
+                              onClick={() => setSelectedPlayer(isSelected ? null : { player: p, team: 'defending' })}
+                            >
+                              {isSelected ? 'Active' : 'Select'}
+                            </Button>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -467,12 +676,26 @@ export const ScenarioBuilderPage: FC = () => {
                     />
                   </div>
 
+                  <CustomSelect
+                    label="Competition Preset"
+                    value={
+                      COMPETITION_OPTIONS.some((opt) => opt.value === matchContext.competition)
+                        ? (matchContext.competition ?? '')
+                        : 'Tactical Simulation & Training'
+                    }
+                    onChange={(val) => {
+                      setMatchContext((prev) => ({ ...prev, competition: val }))
+                    }}
+                    options={COMPETITION_OPTIONS}
+                  />
+
                   <Input
-                    label="Competition"
+                    label="Competition Name"
                     value={matchContext.competition || ''}
                     onChange={(e) =>
                       setMatchContext((prev) => ({ ...prev, competition: e.target.value }))
                     }
+                    placeholder="e.g. Premier League or Friendly"
                   />
 
                   {/* Ball Coordinates */}

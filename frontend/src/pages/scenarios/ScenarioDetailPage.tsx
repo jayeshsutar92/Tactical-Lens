@@ -179,6 +179,7 @@ export const ScenarioDetailPage: FC = () => {
             ballPosition={scenario.ball_position}
             selectedPlayerId={selectedPlayer?.player.id}
             onSelectPlayer={(p, team) => setSelectedPlayer({ player: p, team })}
+            onDeselectPlayer={() => setSelectedPlayer(null)}
             height="560px"
             showZones
           />
