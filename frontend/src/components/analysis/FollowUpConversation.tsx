@@ -1,15 +1,18 @@
-import { type FC, type FormEvent, useState } from 'react'
+import { type FC, type FormEvent, useEffect, useRef, useState } from 'react'
 import {
+  AlertCircle,
   BookOpen,
   Bot,
   CornerDownLeft,
   Flame,
   HelpCircle,
   MessageSquare,
+  RotateCcw,
   Send,
   Sparkles,
   User,
   Users,
+  X,
 } from 'lucide-react'
 import type { ConversationMessage } from '../../types/analysis.ts'
 import { analysisService } from '../../api/services/analysis.ts'
@@ -47,6 +50,13 @@ export const FollowUpConversation: FC<FollowUpConversationProps> = ({
   const [question, setQuestion] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastFailedQuery, setLastFailedQuery] = useState<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to latest turn whenever messages change or loading state toggles
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isSubmitting])
 
   const handleSubmit = async (queryText?: string) => {
     const textToSend = (queryText ?? question).trim()
@@ -54,16 +64,20 @@ export const FollowUpConversation: FC<FollowUpConversationProps> = ({
 
     setIsSubmitting(true)
     setError(null)
+    setLastFailedQuery(null)
 
-    // Optimistic user message
+    // Temporary optimistic user message
+    const tempUserMsgId = createMessageId('temp_user')
     const tempUserMsg: ConversationMessage = {
-      id: createMessageId('temp_user'),
+      id: tempUserMsgId,
       role: 'user',
       content: textToSend,
       created_at: getCurrentTimestamp(),
     }
     setMessages((prev) => [...prev, tempUserMsg])
-    setQuestion('')
+    if (!queryText) {
+      setQuestion('')
+    }
 
     try {
       const response = await analysisService.submitFollowUp(analysisId, {
@@ -84,7 +98,17 @@ export const FollowUpConversation: FC<FollowUpConversationProps> = ({
 
       setMessages((prev) => [...prev, assistantMsg])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to retrieve follow-up answer.')
+      // Revert optimistic user bubble on error so message history stays consistent
+      setMessages((prev) => prev.filter((m) => m.id !== tempUserMsgId))
+      setLastFailedQuery(textToSend)
+      if (!queryText) {
+        setQuestion(textToSend)
+      }
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to connect to TacticalLens Node.js backend. Please ensure the backend is running on port 8000.'
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -107,13 +131,23 @@ export const FollowUpConversation: FC<FollowUpConversationProps> = ({
             Ask deep-dive questions referencing {scenarioTitle || 'the match scenario'} and AI pressing deductions.
           </span>
         </div>
-        <Badge variant="tactical">Groq Llama 3.3 Memory</Badge>
+        <Badge variant="tactical">Groq Llama 3.3 &bull; Node.js Engine</Badge>
       </CardHeader>
       <CardContent>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Quick Preset Inquiry Chips */}
           <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
               <Sparkles size={12} color="var(--color-pitch)" />
               SUGGESTED FAN INQUIRIES:
             </div>
@@ -135,14 +169,19 @@ export const FollowUpConversation: FC<FollowUpConversationProps> = ({
                     color: 'var(--text-secondary)',
                     transition: 'all var(--transition-fast)',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    opacity: isSubmitting ? 0.6 : 1,
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--color-pitch)'
-                    e.currentTarget.style.color = 'var(--text-primary)'
+                    if (!isSubmitting) {
+                      e.currentTarget.style.borderColor = 'var(--color-pitch)'
+                      e.currentTarget.style.color = 'var(--text-primary)'
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-default)'
-                    e.currentTarget.style.color = 'var(--text-secondary)'
+                    if (!isSubmitting) {
+                      e.currentTarget.style.borderColor = 'var(--border-default)'
+                      e.currentTarget.style.color = 'var(--text-secondary)'
+                    }
                   }}
                 >
                   <HelpCircle size={12} color="var(--color-pitch)" />
@@ -303,20 +342,66 @@ export const FollowUpConversation: FC<FollowUpConversationProps> = ({
                 <span>Evaluating follow-up against match scenario coordinates and tactical theory...</span>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {error && (
             <div
               style={{
-                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
                 borderRadius: 'var(--radius-md)',
                 backgroundColor: 'rgba(239, 68, 68, 0.1)',
                 border: '1px solid rgba(239, 68, 68, 0.3)',
                 color: '#f87171',
                 fontSize: '0.8125rem',
+                gap: '12px',
               }}
             >
-              {error}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                <AlertCircle size={16} color="#f87171" style={{ flexShrink: 0 }} />
+                <span>{error}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {lastFailedQuery && (
+                  <button
+                    type="button"
+                    onClick={() => void handleSubmit(lastFailedQuery)}
+                    disabled={isSubmitting}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'transparent',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '4px 8px',
+                      color: '#f87171',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <RotateCcw size={12} />
+                    Retry
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#f87171',
+                    cursor: 'pointer',
+                    padding: '2px',
+                  }}
+                  title="Dismiss error"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
           )}
 
@@ -334,6 +419,7 @@ export const FollowUpConversation: FC<FollowUpConversationProps> = ({
                   width: '100%',
                   paddingRight: '36px',
                   backgroundColor: 'var(--bg-canvas)',
+                  opacity: isSubmitting ? 0.7 : 1,
                 }}
               />
               <span

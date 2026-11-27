@@ -368,6 +368,7 @@ export const AnalysisDetailPage: FC = () => {
         />
       ) : (
         <FollowUpConversation
+          key={analysis.id}
           analysisId={analysis.id}
           initialMessages={analysis.messages || []}
           scenarioTitle={analysis.scenario_title}
