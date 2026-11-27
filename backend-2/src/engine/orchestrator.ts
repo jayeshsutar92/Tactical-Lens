@@ -139,21 +139,32 @@ export class TacticalAgentOrchestrator {
   }
 
   /**
-   * Executes a contextual follow-up question turn.
+   * Executes a contextual follow-up question turn grounded in deterministic scenario metrics.
    */
   async runFollowUp(
     db = defaultDb,
     scenarioData: Record<string, any>,
     initialSummary: string,
     conversationHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
-    followUpQuestion: string
+    followUpQuestion: string,
+    spatialMetricsInput?: Record<string, any> | null
   ): Promise<{
     answer: string;
     relevant_players_mentioned: string[];
     clarified_tactics: string[];
     citations: SourceCitation[];
   }> {
-    // 1. Retrieve additional tactical knowledge for the question
+    // 1. Ensure deterministic spatial metrics are computed for grounding
+    let spatialMetrics: Record<string, any> | null = spatialMetricsInput || null;
+    if (!spatialMetrics) {
+      try {
+        spatialMetrics = TacticalEngine.analyzeScenario(scenarioData) as unknown as Record<string, any>;
+      } catch (calcErr: any) {
+        logger.warn(`Deterministic spatial calculation notice: ${calcErr?.message || calcErr}`);
+      }
+    }
+
+    // 2. Retrieve additional tactical knowledge for the question
     let additionalChunks: Array<{
       documentTitle: string;
       topic: string;
@@ -191,6 +202,7 @@ export class TacticalAgentOrchestrator {
       scenarioInfo,
       initialAnalysisSummary: initialSummary,
       conversationHistory,
+      spatialInfo: spatialMetrics || undefined,
       additionalKnowledge: additionalChunks,
     });
 
@@ -199,14 +211,38 @@ export class TacticalAgentOrchestrator {
         responseFormat: { type: 'json_object' },
       });
 
-      let parsed: any;
-      try {
-        parsed = JSON.parse(respStr);
-      } catch {
-        parsed = { answer: respStr, relevant_players_mentioned: [], clarified_tactics: [] };
+      let cleaned = respStr.trim();
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+      } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
       }
 
-      const validated = followUpResponseSchema.safeParse(parsed);
+      let parsed: any;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        parsed = {
+          answer: cleaned,
+          relevant_players_mentioned: this.extractPlayerReferences(cleaned, scenarioData),
+          clarified_tactics: this.extractTacticalConcepts(cleaned),
+        };
+      }
+
+      let rawAnswer = typeof parsed.answer === 'string' ? parsed.answer : cleaned;
+      // Strip any canned greeting or intro if echoed by LLM
+      rawAnswer = rawAnswer.replace(/^Addressing your follow-up inquiry regarding [^:]*:\s*/i, '').trim();
+
+      const validated = followUpResponseSchema.safeParse({
+        answer: rawAnswer,
+        relevant_players_mentioned: Array.isArray(parsed.relevant_players_mentioned)
+          ? parsed.relevant_players_mentioned
+          : this.extractPlayerReferences(rawAnswer, scenarioData),
+        clarified_tactics: Array.isArray(parsed.clarified_tactics)
+          ? parsed.clarified_tactics
+          : this.extractTacticalConcepts(rawAnswer),
+      });
+
       if (validated.success) {
         return {
           answer: validated.data.answer,
@@ -217,16 +253,20 @@ export class TacticalAgentOrchestrator {
       }
 
       return {
-        answer: parsed.answer || respStr,
-        relevant_players_mentioned: Array.isArray(parsed.relevant_players_mentioned)
-          ? parsed.relevant_players_mentioned
-          : [],
-        clarified_tactics: Array.isArray(parsed.clarified_tactics) ? parsed.clarified_tactics : [],
+        answer: rawAnswer,
+        relevant_players_mentioned: this.extractPlayerReferences(rawAnswer, scenarioData),
+        clarified_tactics: this.extractTacticalConcepts(rawAnswer),
         citations,
       };
     } catch (err: any) {
-      logger.warn(`Groq follow-up generation failed (${err?.message || err}). Using grounded fallback synthesis.`);
-      const fallback = this.buildFollowUpFallback(followUpQuestion, scenarioData);
+      logger.warn(
+        `Groq follow-up generation failed (${err?.message || err}). Using dynamic grounded fallback synthesis.`
+      );
+      const fallback = this.buildFollowUpFallback(
+        followUpQuestion,
+        scenarioData,
+        spatialMetrics || undefined
+      );
       return {
         answer: fallback.answer,
         relevant_players_mentioned: fallback.relevant_players_mentioned,
@@ -237,38 +277,140 @@ export class TacticalAgentOrchestrator {
   }
 
   /**
-   * Generates a grounded fallback answer for contextual follow-up inquiries.
+   * Generates a dynamic, metric-grounded fallback answer when the external Groq API is unavailable.
    */
   private buildFollowUpFallback(
     question: string,
-    scenarioData: Record<string, any>
+    scenarioData: Record<string, any>,
+    spatialMetrics?: Record<string, any>
   ): {
     answer: string;
     relevant_players_mentioned: string[];
     clarified_tactics: string[];
   } {
+    const att = scenarioData.attacking_team || {};
     const df = scenarioData.defending_team || {};
-    const defPlayers: any[] = df.players || [];
-    const names = defPlayers.slice(0, 3).map((p: any) => `#${p.number || ''} ${p.name || 'Defender'}`);
+    const attName = att.name || 'the attacking team';
+    const defName = df.name || 'the defending unit';
 
-    const answer =
-      `Addressing your follow-up inquiry regarding "${question}": In this scenario setup, ` +
-      `${df.name || 'the defending unit'} relies heavily on disciplined spatial compactness and synchronized line shifting. ` +
-      `If the attacking team attempts to bypass the primary pressure zone, the defensive line and midfield pivot ` +
-      `must immediately collapse inward to protect Zone 14 and screen high-value passing angles. ` +
-      `This preserves rest-defense balance and limits progressive central penetration.`;
+    const carrier = spatialMetrics?.ball_carrier;
+    const carrierName = carrier ? `#${carrier.number} ${carrier.name}` : 'the ball carrier';
+    const carrierZone = scenarioData.ball_position?.zone || 'the build-up zone';
 
-    const tactics = [
-      'Cover Shadows',
-      'Zone 14 Protection',
-      'Defensive Compactness',
-      'Rest-Defense Balance',
-    ];
+    const presser = spatialMetrics?.primary_presser;
+    const presserName = presser
+      ? `#${presser.number} ${presser.name} (${presser.role})`
+      : 'the lead presser';
+    const presserDist = presser?.distance_to_ball ?? 4.2;
+
+    const passingLanes: any[] = spatialMetrics?.passing_lanes || [];
+    const blockedLanes = passingLanes
+      .filter((l: any) => l.status === 'blocked_by_cover_shadow')
+      .map((l: any) => l.target_player);
+    const openLanes = passingLanes
+      .filter((l: any) => l.status === 'open')
+      .map((l: any) => l.target_player);
+
+    const lowBlock = spatialMetrics?.low_block_compactness;
+    const interLineDist = lowBlock?.inter_line_distance_meters ?? 14.5;
+    const blockRating = lowBlock?.haramball_rating || 'compact defensive block';
+
+    const zone14 = spatialMetrics?.zone14_density;
+    const zone14Defenders = zone14?.zone14_defenders_count ?? 2;
+    const screeningRatio = Math.round((zone14?.central_screening_ratio ?? 0.75) * 100);
+
+    const qLower = question.toLowerCase();
+    let answer = '';
+    const relevantPlayers: string[] = [];
+    const clarifiedTactics: string[] = [];
+
+    if (presser) relevantPlayers.push(`#${presser.number} ${presser.name}`);
+    if (carrier) relevantPlayers.push(`#${carrier.number} ${carrier.name}`);
+
+    // Contextual branching based on tactical inquiry topic
+    if (
+      qLower.includes('zone 14') ||
+      qLower.includes('bypass') ||
+      qLower.includes('low block') ||
+      qLower.includes('compact')
+    ) {
+      clarifiedTactics.push('Zone 14 Protection', 'Defensive Compactness', 'Rest-Defense Balance');
+      answer =
+        `If ${attName} manages to bypass ${presserName}, ${defName} relies on their ${blockRating} maintaining an inter-line distance of ${interLineDist}m between defense and midfield. ` +
+        `Zone 14 is screened with ${zone14Defenders} defenders providing a ${screeningRatio}% central coverage ratio, forcing progression away from high-danger central shooting zones toward the flanks. ` +
+        `${defName}'s defensive line must hold their horizontal shape to prevent third-man combinations while the midfield double pivot collapses to recover rest-defense equilibrium.`;
+    } else if (
+      qLower.includes('pass') ||
+      qLower.includes('lane') ||
+      qLower.includes('shadow') ||
+      qLower.includes('option') ||
+      qLower.includes('escape')
+    ) {
+      clarifiedTactics.push('Cover Shadows', 'Passing Lane Interception', 'Escape Outlets');
+      const blockedText =
+        blockedLanes.length > 0 ? blockedLanes.slice(0, 2).join(' and ') : 'central progression options';
+      const openText = openLanes.length > 0 ? openLanes.slice(0, 2).join(' and ') : 'wide outlets';
+      if (blockedLanes[0]) relevantPlayers.push(blockedLanes[0]);
+      if (openLanes[0]) relevantPlayers.push(openLanes[0]);
+
+      answer =
+        `${presserName} aggressively closes down ${carrierName} from ${presserDist}m away, angling the pressing vector to cast an active cover shadow over ${blockedText}. ` +
+        `This spatial restriction forces ${attName} to look toward ${openText} as primary escape channels before the trap snaps shut. ` +
+        `If the pass is delayed, supporting defenders will compress the remaining open passing angles to win possession.`;
+    } else if (
+      qLower.includes('trigger') ||
+      qLower.includes('winger') ||
+      qLower.includes('trap') ||
+      qLower.includes('press')
+    ) {
+      clarifiedTactics.push('Pressing Triggers', 'Touchline Trap', 'Directional Funneling');
+      answer =
+        `The primary pressing trigger is activated by ${presserName} engaging ${carrierName} at ${presserDist}m as soon as possession enters ${carrierZone}. ` +
+        `This directional press funnels the ball carrier toward the boundary, cutting off central passing avenues and initiating synchronized shifts from supporting teammates. ` +
+        `${defName} leverages this pressing trap to force an immediate hurried decision or a contested aerial clearance.`;
+    } else {
+      clarifiedTactics.push('Spatial Compactness', 'Cover Shadows', 'Defensive Transition');
+      answer =
+        `In this setup, ${presserName} exerts targeted pressure on ${carrierName} (${presserDist}m away) in ${carrierZone}, restricting direct central advancement. ` +
+        `${defName} preserves defensive compactness with an inter-line separation of ${interLineDist}m, shielding Zone 14 against vertical line-breaking passes. ` +
+        `To progress cleanly, ${attName} must circulate play through open passing outlets before ${defName}'s defensive structure completely seals the active corridor.`;
+    }
 
     return {
       answer,
-      relevant_players_mentioned: names,
-      clarified_tactics: tactics,
+      relevant_players_mentioned: Array.from(new Set(relevantPlayers)),
+      clarified_tactics: Array.from(new Set(clarifiedTactics)),
     };
+  }
+
+  private extractPlayerReferences(text: string, scenarioData: Record<string, any>): string[] {
+    const result: string[] = [];
+    const allPlayers: any[] = [
+      ...(scenarioData.attacking_team?.players || []),
+      ...(scenarioData.defending_team?.players || []),
+    ];
+    for (const p of allPlayers) {
+      if (p.name && text.toLowerCase().includes(p.name.toLowerCase())) {
+        result.push(`#${p.number || ''} ${p.name}`.trim());
+      }
+    }
+    return Array.from(new Set(result)).slice(0, 5);
+  }
+
+  private extractTacticalConcepts(text: string): string[] {
+    const knownConcepts = [
+      'Cover Shadows',
+      'Zone 14 Protection',
+      'Defensive Compactness',
+      'Pressing Triggers',
+      'Rest-Defense Balance',
+      'Third-Man Runs',
+      'Touchline Trap',
+      'Inter-Line Distance',
+      'Haramball Low Block',
+      'Passing Lane Interception',
+    ];
+    const found = knownConcepts.filter((c) => text.toLowerCase().includes(c.toLowerCase()));
+    return found.length > 0 ? found : ['Tactical Spatial Dynamics', 'Defensive Compactness'];
   }
 }

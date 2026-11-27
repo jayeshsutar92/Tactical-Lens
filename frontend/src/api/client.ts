@@ -111,7 +111,7 @@ export class ApiClient {
             errorCode = typeof nested.code === 'string' ? nested.code : errorCode
             details = nested.details
           } else if (Array.isArray(errObj.detail)) {
-            // FastAPI pydantic validation errors
+            // Validation errors array
             errorMessage = errObj.detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join('; ') || errorMessage
             errorCode = 'VALIDATION_ERROR'
             details = errObj.detail

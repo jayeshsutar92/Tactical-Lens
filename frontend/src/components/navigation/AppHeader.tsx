@@ -32,7 +32,7 @@ export const AppHeader: FC = () => {
           }}
         >
           <Terminal size={14} color="var(--color-pitch)" />
-          <span style={{ fontFamily: 'var(--font-mono)' }}>FastAPI Engine v0.2.0</span>
+          <span style={{ fontFamily: 'var(--font-mono)' }}>Node.js Engine v1.0.0</span>
         </div>
       </div>
 

@@ -174,13 +174,17 @@ export class AnalysisService {
       content: m.content,
     }));
 
+    const metricsPayload = (analysis.metrics as Record<string, unknown>) || {};
+    const spatialMetrics = (metricsPayload.spatial_metrics as Record<string, any>) || null;
+
     const orchestrator = new TacticalAgentOrchestrator();
     const result = await orchestrator.runFollowUp(
       db,
       scenarioData,
       initialSummary,
       conversationHistory,
-      request.question
+      request.question,
+      spatialMetrics
     );
 
     const now = new Date().toISOString();

@@ -163,56 +163,137 @@ export function buildFollowUpPrompt(params: {
   scenarioInfo: Record<string, any>;
   initialAnalysisSummary: string;
   conversationHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  spatialInfo?: Record<string, any>;
   additionalKnowledge?: Array<{
     documentTitle: string;
     topic: string;
     content: string;
   }>;
 }): ChatMessage[] {
-  const { followUpQuestion, scenarioInfo, initialAnalysisSummary, conversationHistory, additionalKnowledge } =
-    params;
+  const {
+    followUpQuestion,
+    scenarioInfo,
+    initialAnalysisSummary,
+    conversationHistory,
+    spatialInfo,
+    additionalKnowledge,
+  } = params;
 
   const systemPrompt =
-    'You are TacticalLens Tactical Agent continuing a tactical conversation with a user about a specific match scenario. ' +
-    'Maintain deep context of the previously analyzed scenario, players, pressing direction, and tactical concepts.\n' +
-    'IMPORTANT RULES:\n' +
-    '1. Direct Answer: Answer the user\'s specific follow-up question directly and thoroughly without re-summarizing the entire initial analysis.\n' +
-    '2. Grounded references: Reference specific player names, roles, numbers, and pitch areas from the scenario.\n' +
-    '3. Tactical Accuracy: Distinguish between verified theoretical principles and scenario-specific observations.\n' +
-    '4. Output JSON: Respond with a JSON object with keys: "answer" (string), "relevant_players_mentioned" (array of strings), and "clarified_tactics" (array of strings).\n';
+    'You are TacticalLens Tactical AI Assistant, an elite football tactical analyst.\n' +
+    'You analyze match scenarios using deterministic 105x68m pitch geometry, cover-shadow projections, defensive blocks, and pressing systems.\n' +
+    'CRITICAL OPERATING RULES:\n' +
+    '1. Direct Answer: Answer the user\'s specific question directly in 3 to 5 concise, professional sentences. Do NOT include canned greeting or opening phrases like "Addressing your follow-up inquiry regarding...". Jump straight into the tactical analysis.\n' +
+    '2. Deterministic Grounding: Reference the scenario\'s exact deterministic metrics: cite exact player names, squad numbers, measured distances in meters, open vs. blocked passing lanes, and specific pitch zones (e.g., Zone 14, half-spaces).\n' +
+    '3. Defensive Structure: If asked about defensive organization, bypasses, or line height, cite vertical compactness (inter-line distance in meters), Zone 14 screening ratio, and pressing triggers.\n' +
+    '4. Output JSON: You MUST respond with a valid JSON object strictly formatted as:\n' +
+    '{\n' +
+    '  "answer": "3-5 concise tactical sentences directly answering the user query",\n' +
+    '  "relevant_players_mentioned": ["#<number> <PlayerName>", ...],\n' +
+    '  "clarified_tactics": ["<Concept 1>", "<Concept 2>", ...]\n' +
+    '}';
 
   const messages: ChatMessage[] = [{ role: 'system', content: systemPrompt }];
 
-  // Provide initial scenario & analysis baseline as context
-  const initialContext =
-    `### SCENARIO BASELINE: ${scenarioInfo.title || 'Scenario'} (${scenarioInfo.match_phase || 'Phase'})\n` +
-    `Attacking: ${scenarioInfo.attacking_team?.name || 'Attacking'} | Defending: ${scenarioInfo.defending_team?.name || 'Defending'}\n` +
-    `Initial Analysis Summary: ${initialAnalysisSummary}\n`;
+  // Grounded scenario and spatial metrics baseline
+  const contextSections: string[] = [];
+  contextSections.push(`### SCENARIO BASELINE: ${scenarioInfo.title || 'Scenario'} (${scenarioInfo.match_phase || 'Phase'})`);
+  contextSections.push(`- Attacking Team: ${scenarioInfo.attacking_team?.name || 'Attacking'} (${scenarioInfo.attacking_team?.formation || 'N/A'})`);
+  contextSections.push(`- Defending Team: ${scenarioInfo.defending_team?.name || 'Defending'} (${scenarioInfo.defending_team?.formation || 'N/A'})`);
+  if (scenarioInfo.ball_position) {
+    contextSections.push(
+      `- Ball Location: (${scenarioInfo.ball_position.x}m, ${scenarioInfo.ball_position.y}m) - Zone: ${scenarioInfo.ball_position.zone || 'Pitch'}`
+    );
+  }
 
-  messages.push({ role: 'system', content: initialContext });
+  // Include deterministic spatial engine metrics if available
+  if (spatialInfo) {
+    contextSections.push('\n### DETERMINISTIC SPATIAL & TACTICAL METRICS:');
 
-  // Prior conversation history turns (pruned to last 6 for token efficiency)
+    if (spatialInfo.ball_carrier) {
+      const bc = spatialInfo.ball_carrier;
+      const x = bc.coordinates?.x ?? bc.position?.x ?? 'N/A';
+      const y = bc.coordinates?.y ?? bc.position?.y ?? 'N/A';
+      contextSections.push(`- Ball Carrier: #${bc.number} ${bc.name} (${bc.role}) at (${x}m, ${y}m), Distance to Ball: ${bc.distance_to_ball}m`);
+    }
+
+    if (spatialInfo.primary_presser) {
+      const pp = spatialInfo.primary_presser;
+      contextSections.push(`- Primary Presser: #${pp.number} ${pp.name} (${pp.role}), Distance to Carrier: ${pp.distance_to_ball}m`);
+    }
+
+    if (Array.isArray(spatialInfo.supporting_pressers) && spatialInfo.supporting_pressers.length > 0) {
+      const sps = spatialInfo.supporting_pressers.map((p: any) => `#${p.number} ${p.name} (${p.distance_to_ball}m)`);
+      contextSections.push(`- Supporting Pressers (<=15m): ${sps.join(', ')}`);
+    }
+
+    if (spatialInfo.pressing_funnel) {
+      contextSections.push(`- Pressing Funnel Direction: ${spatialInfo.pressing_funnel}`);
+    }
+
+    if (Array.isArray(spatialInfo.passing_lanes) && spatialInfo.passing_lanes.length > 0) {
+      const blocked = spatialInfo.passing_lanes
+        .filter((l: any) => l.status === 'blocked_by_cover_shadow')
+        .map((l: any) => `${l.target_player} (${l.nearest_defender_distance}m defender dist)`);
+      const contested = spatialInfo.passing_lanes
+        .filter((l: any) => l.status === 'contested')
+        .map((l: any) => `${l.target_player} (${l.nearest_defender_distance}m defender dist)`);
+      const open = spatialInfo.passing_lanes
+        .filter((l: any) => l.status === 'open')
+        .map((l: any) => `${l.target_player} in ${l.target_zone}`);
+
+      contextSections.push(`- Passing Lanes - Blocked by Cover Shadow: ${blocked.length > 0 ? blocked.join(', ') : 'None'}`);
+      contextSections.push(`- Passing Lanes - Contested: ${contested.length > 0 ? contested.join(', ') : 'None'}`);
+      contextSections.push(`- Passing Lanes - Open Outlets: ${open.length > 0 ? open.join(', ') : 'None'}`);
+    }
+
+    if (spatialInfo.low_block_compactness) {
+      const lb = spatialInfo.low_block_compactness;
+      contextSections.push(
+        `- Defensive Block: ${lb.haramball_rating || lb.block_classification} (Inter-line vertical distance: ${lb.inter_line_distance_meters}m, Def line avg X: ${lb.defensive_line_avg_x}m, Midfield avg X: ${lb.midfield_line_avg_x}m)`
+      );
+    }
+
+    if (spatialInfo.zone14_density) {
+      const z14 = spatialInfo.zone14_density;
+      contextSections.push(
+        `- Zone 14 Screening: ${z14.zone14_defenders_count} defenders in Zone 14, Screening Ratio: ${(z14.central_screening_ratio * 100).toFixed(0)}%, Forces Play Wide: ${z14.forces_play_wide ? 'Yes' : 'No'}`
+      );
+    }
+
+    if (spatialInfo.pressing_trigger_analysis) {
+      const pt = spatialInfo.pressing_trigger_analysis;
+      contextSections.push(
+        `- Pressing Triggers: Step-out: ${pt.has_stepped_out ? 'Yes' : 'No'}, Trigger Player: ${pt.step_out_player || 'None'}, Observation: ${pt.tactical_observation}`
+      );
+    }
+  }
+
+  contextSections.push(`\n### INITIAL ANALYSIS SUMMARY:\n${initialAnalysisSummary}`);
+
+  messages.push({ role: 'system', content: contextSections.join('\n') });
+
+  // Append recent conversation history turns (pruned to last 6 for high context retention)
   const historySlice = conversationHistory.slice(-6);
   for (const msg of historySlice) {
     messages.push({ role: msg.role, content: msg.content });
   }
 
-  // Additional retrieved knowledge if any
+  // Additional retrieved theoretical knowledge if present
   if (additionalKnowledge && additionalKnowledge.length > 0) {
-    let kText = '\n### ADDITIONAL RETRIEVED TACTICAL KNOWLEDGE FOR FOLLOW-UP:\n';
+    let kText = '### RETRIEVED THEORETICAL TACTICAL KNOWLEDGE FOR FOLLOW-UP:\n';
     for (const chunk of additionalKnowledge) {
-      kText += `- Source: ${chunk.documentTitle}: ${chunk.content}\n`;
+      kText += `- [${chunk.topic}] ${chunk.documentTitle}: ${chunk.content}\n`;
     }
     messages.push({ role: 'system', content: kText });
   }
 
-  // Current user follow-up inquiry
+  // Current user inquiry
   messages.push({
     role: 'user',
     content:
       `User Follow-up Question: "${followUpQuestion}"\n\n` +
-      'Respond in JSON format with keys: answer (string), relevant_players_mentioned (list of player names/numbers), ' +
-      'clarified_tactics (list of key tactical terms clarified).',
+      'Answer directly in 3 to 5 sentences. Use the exact player names, numbers, distances, and tactical metrics from the scenario. Output must be a valid JSON object with keys: answer (string), relevant_players_mentioned (list of strings), and clarified_tactics (list of strings).',
   });
 
   return messages;

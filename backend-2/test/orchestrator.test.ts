@@ -201,7 +201,41 @@ describe('TacticalAgentOrchestrator & Resilience Fallback', () => {
     );
 
     expect(result.answer).toContain('Zone 14');
+    expect(result.answer).not.toContain('Addressing your follow-up inquiry');
     expect(result.relevant_players_mentioned.length).toBeGreaterThan(0);
     expect(result.clarified_tactics).toContain('Zone 14 Protection');
+  });
+
+  it('handles live follow-up queries parsing JSON output from Groq', async () => {
+    const orchestrator = new TacticalAgentOrchestrator();
+
+    const mockAiResponse = JSON.stringify({
+      answer:
+        'Diaz angles his run from 4.2m away to cut off the pass to Van Hecke, forcing play toward the touchline. This allows Liverpool to compress the pitch while maintaining defensive compactness across their midfield line.',
+      relevant_players_mentioned: ['#7 Diaz', '#29 Van Hecke'],
+      clarified_tactics: ['Touchline Trap', 'Cover Shadows'],
+    });
+
+    vi.spyOn(GroqClient, 'chatCompletion').mockResolvedValue(mockAiResponse);
+
+    const dummyDb: any = {
+      select: () => ({
+        from: () => ({
+          innerJoin: () => Promise.resolve([]),
+        }),
+      }),
+    };
+
+    const result = await orchestrator.runFollowUp(
+      dummyDb,
+      mockScenario,
+      'Initial tactical summary',
+      [{ role: 'user', content: 'What is the primary trigger?' }],
+      'Why did Diaz press the centre-back?'
+    );
+
+    expect(result.answer).toContain('Diaz angles his run');
+    expect(result.relevant_players_mentioned).toContain('#7 Diaz');
+    expect(result.clarified_tactics).toContain('Touchline Trap');
   });
 });

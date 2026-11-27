@@ -26,7 +26,7 @@ export const SpatialMetricsCard: FC<SpatialMetricsCardProps> = ({ metrics }) => 
           <Activity size={18} color="var(--color-tactical)" />
           Deterministic Spatial Dynamics
         </CardTitle>
-        <Badge variant="tactical">Python Geometry Tools</Badge>
+        <Badge variant="tactical">Deterministic Geometry Tools</Badge>
       </CardHeader>
       <CardContent>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>

@@ -15,7 +15,7 @@ export const AppLayout: FC = () => {
         <footer className="pl-footer">
           <div>
             <span>TacticalLens Football Intelligence Engine</span> &bull;{' '}
-            <span style={{ color: 'var(--text-dim)' }}>Powered by FastAPI, PostgreSQL, and Groq</span>
+            <span style={{ color: 'var(--text-dim)' }}>Powered by Node.js, PostgreSQL, and Groq</span>
           </div>
           <div style={{ fontFamily: 'var(--font-mono)' }}>TacticalLens UI v0.2.0</div>
         </footer>
