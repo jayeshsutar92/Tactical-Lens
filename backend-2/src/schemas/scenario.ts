@@ -52,6 +52,8 @@ export const scenarioCreateSchema = z.object({
   match_context: matchContextSchema.optional().nullable(),
 });
 
+export const scenarioUpdateSchema = scenarioCreateSchema.partial();
+
 export const scenarioQuerySchema = paginationQuerySchema.extend({
   match_phase: z.string().optional(),
   is_prepared: z
@@ -94,6 +96,7 @@ export type TeamTacticalSetup = z.infer<typeof teamTacticalSetupSchema>;
 export type BallPosition = z.infer<typeof ballPositionSchema>;
 export type MatchContext = z.infer<typeof matchContextSchema>;
 export type ScenarioCreateInput = z.infer<typeof scenarioCreateSchema>;
+export type ScenarioUpdateInput = z.infer<typeof scenarioUpdateSchema>;
 export type ScenarioQueryInput = z.infer<typeof scenarioQuerySchema>;
 export type ScenarioSummaryResponse = z.infer<typeof scenarioSummaryResponseSchema>;
 export type ScenarioResponse = z.infer<typeof scenarioResponseSchema>;

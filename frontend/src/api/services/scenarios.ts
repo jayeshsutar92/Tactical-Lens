@@ -27,6 +27,10 @@ export const scenarioService = {
     return apiClient.post<Scenario>('/scenarios', payload)
   },
 
+  updateScenario: (id: string, payload: Partial<ScenarioCreatePayload>): Promise<Scenario> => {
+    return apiClient.put<Scenario>(`/scenarios/${id}`, payload)
+  },
+
   deleteScenario: (id: string): Promise<{ status: string; message: string }> => {
     return apiClient.delete<{ status: string; message: string }>(`/scenarios/${id}`)
   },

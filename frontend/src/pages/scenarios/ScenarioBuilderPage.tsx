@@ -1,10 +1,14 @@
 import { type FC, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  Copy,
+  Edit3,
   Info,
+  RotateCcw,
   Save,
   Sparkles,
+  Zap,
 } from 'lucide-react'
 import {
   Badge,
@@ -13,16 +17,19 @@ import {
   CardContent,
   CardHeader,
   CustomSelect,
+  EmptyState,
   Input,
+  LoadingSpinner,
 } from '../../components/common/index.ts'
 import { PlayerInspector, TacticalPitch } from '../../components/pitch/index.ts'
-import { useApiMutation } from '../../hooks/useApi.ts'
+import { useApiMutation, useApiQuery } from '../../hooks/useApi.ts'
 import { scenarioService } from '../../api/services/scenarios.ts'
 import type {
   BallPosition,
   MatchContext,
   MatchPhase,
   Player,
+  Scenario,
   ScenarioCreatePayload,
   TeamTacticalSetup,
 } from '../../types/scenario.ts'
@@ -71,41 +78,57 @@ const COMPETITION_OPTIONS = [
   { value: 'Tactical Simulation & Training', label: 'Tactical Simulation & Training' },
 ]
 
-export const ScenarioBuilderPage: FC = () => {
+interface ScenarioBuilderFormProps {
+  initialScenario?: Scenario | null
+  editScenarioId?: string | null
+}
+
+const ScenarioBuilderForm: FC<ScenarioBuilderFormProps> = ({
+  initialScenario,
+  editScenarioId,
+}) => {
   const navigate = useNavigate()
+  const isEditMode = Boolean(editScenarioId && initialScenario)
 
   // Form State
-  const [title, setTitle] = useState<string>('Custom Pressing Setup')
+  const [title, setTitle] = useState<string>(() => initialScenario?.title ?? 'Custom Pressing Setup')
   const [description, setDescription] = useState<string>(
-    'Coordinated pressing block trapping opponent build-up in wide half-spaces.',
+    () => initialScenario?.description ?? 'Coordinated pressing block trapping opponent build-up in wide half-spaces.',
   )
-  const [matchPhase, setMatchPhase] = useState<MatchPhase>('high_press')
+  const [matchPhase, setMatchPhase] = useState<MatchPhase>(
+    () => (initialScenario?.match_phase as MatchPhase) ?? 'high_press',
+  )
   const [tacticalSituation, setTacticalSituation] = useState<string>(
-    'Opponent Build-Up from Deep Defensive Third',
+    () => initialScenario?.tactical_situation ?? 'Opponent Build-Up from Deep Defensive Third',
   )
 
-  // Team Setups
+  // Team Setups: STRICT SPATIAL INTEGRITY
+  // Preserves exact player (x, y) coordinates, squad numbers, roles, and names verbatim
   const [attackingTeam, setAttackingTeam] = useState<TeamTacticalSetup>(() =>
-    createDefaultTeamSetup('attacking', '4-3-3', 'Brighton & Hove Albion (Build-up)'),
+    initialScenario?.attacking_team ?? createDefaultTeamSetup('attacking', '4-3-3', 'Brighton & Hove Albion (Build-up)'),
   )
   const [defendingTeam, setDefendingTeam] = useState<TeamTacticalSetup>(() =>
-    createDefaultTeamSetup('defending', '4-3-3', 'Liverpool (High Press)'),
+    initialScenario?.defending_team ?? createDefaultTeamSetup('defending', '4-3-3', 'Liverpool (High Press)'),
   )
 
   // Ball & Match Context
-  const [ballPosition, setBallPosition] = useState<BallPosition>({
-    x: 18.0,
-    y: 46.0,
-    z: 0.0,
-    zone: getPitchZone(18.0, 46.0),
-  })
+  const [ballPosition, setBallPosition] = useState<BallPosition>(() =>
+    initialScenario?.ball_position ?? {
+      x: 18.0,
+      y: 46.0,
+      z: 0.0,
+      zone: getPitchZone(18.0, 46.0),
+    },
+  )
 
-  const [matchContext, setMatchContext] = useState<MatchContext>({
-    minute: 24,
-    score: '0-0',
-    competition: 'Premier League',
-    pitch_dimensions: { length: 105.0, width: 68.0 },
-  })
+  const [matchContext, setMatchContext] = useState<MatchContext>(() =>
+    initialScenario?.match_context ?? {
+      minute: 24,
+      score: '0-0',
+      competition: 'Premier League',
+      pitch_dimensions: { length: 105.0, width: 68.0 },
+    },
+  )
 
   // Selected Player for Pitch Inspection & Manipulation
   const [selectedPlayer, setSelectedPlayer] = useState<{
@@ -116,15 +139,34 @@ export const ScenarioBuilderPage: FC = () => {
   const [activeTab, setActiveTab] = useState<'basic' | 'attacking' | 'defending' | 'context'>('basic')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
 
-  // Create Scenario API Mutation
-  const { mutate: submitScenario, isLoading: isSubmitting, error: submitError } = useApiMutation(
+  const handleResetToOriginal = () => {
+    if (!initialScenario) return
+    setTitle(initialScenario.title)
+    setDescription(initialScenario.description ?? '')
+    setMatchPhase(initialScenario.match_phase as MatchPhase)
+    setTacticalSituation(initialScenario.tactical_situation)
+    setAttackingTeam(initialScenario.attacking_team)
+    setDefendingTeam(initialScenario.defending_team)
+    setBallPosition(initialScenario.ball_position)
+    if (initialScenario.match_context) {
+      setMatchContext(initialScenario.match_context)
+    }
+    setSelectedPlayer(null)
+    setValidationErrors([])
+  }
+
+  // API Mutations
+  const { mutate: submitScenario, isLoading: isCreating, error: createError } = useApiMutation(
     (payload: ScenarioCreatePayload) => scenarioService.createScenario(payload),
-    {
-      onSuccess: (newScenario) => {
-        navigate(`/scenarios/${newScenario.id}`)
-      },
-    },
   )
+
+  const { mutate: updateScenarioMutation, isLoading: isUpdating, error: updateError } = useApiMutation(
+    ({ id, payload }: { id: string; payload: ScenarioCreatePayload }) =>
+      scenarioService.updateScenario(id, payload),
+  )
+
+  const isSubmitting = isCreating || isUpdating
+  const submitError = createError || updateError
 
   // Update Player Position from Pitch drag or click
   const handleUpdatePlayerPosition = (
@@ -217,8 +259,11 @@ export const ScenarioBuilderPage: FC = () => {
     setSelectedPlayer(null)
   }
 
-  // Validate and Submit
-  const handleSubmit = async () => {
+  // Validate and Submit (Supports in-place Update, Save as New Copy, or Save & Analyze)
+  const handleSaveScenario = async (options: {
+    mode: 'update' | 'create_new'
+    andAnalyze?: boolean
+  }) => {
     const errors: string[] = []
     if (title.trim().length < 3) errors.push('Title must be at least 3 characters.')
     if (tacticalSituation.trim().length < 3) errors.push('Tactical situation is required.')
@@ -234,8 +279,15 @@ export const ScenarioBuilderPage: FC = () => {
 
     setValidationErrors([])
 
+    let targetTitle = title.trim()
+    if (options.mode === 'create_new' && isEditMode) {
+      if (initialScenario && initialScenario.title === targetTitle && !targetTitle.includes('(Copy)')) {
+        targetTitle = `${targetTitle} (Copy)`
+      }
+    }
+
     const payload: ScenarioCreatePayload = {
-      title: title.trim(),
+      title: targetTitle,
       description: description.trim() || undefined,
       match_phase: matchPhase,
       tactical_situation: tacticalSituation.trim(),
@@ -246,7 +298,21 @@ export const ScenarioBuilderPage: FC = () => {
     }
 
     try {
-      await submitScenario(payload)
+      if (options.mode === 'update' && editScenarioId) {
+        const updated = await updateScenarioMutation({ id: editScenarioId, payload })
+        if (options.andAnalyze) {
+          navigate(`/analysis?scenario_id=${updated.id}`)
+        } else {
+          navigate(`/scenarios/${updated.id}`)
+        }
+      } else {
+        const created = await submitScenario(payload)
+        if (options.andAnalyze) {
+          navigate(`/analysis?scenario_id=${created.id}`)
+        } else {
+          navigate(`/scenarios/${created.id}`)
+        }
+      }
     } catch {
       // Error handled by mutation state
     }
@@ -256,28 +322,130 @@ export const ScenarioBuilderPage: FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Top Navigation */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link to="/scenarios">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <Link to={isEditMode && editScenarioId ? `/scenarios/${editScenarioId}` : '/scenarios'}>
             <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />}>
-              Back to Scenarios
+              {isEditMode ? 'Back to Scenario' : 'Back to Scenarios'}
             </Button>
           </Link>
-          <Badge variant="pitch" icon={<Sparkles size={12} />}>
-            Interactive Scenario Studio
+          <Badge
+            variant={isEditMode ? 'tactical' : 'pitch'}
+            icon={isEditMode ? <Edit3 size={12} /> : <Sparkles size={12} />}
+          >
+            {isEditMode ? 'Scenario Rebuild & Edit Studio' : 'Interactive Scenario Studio'}
           </Badge>
+          {isEditMode && initialScenario && (
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Rebuilding: <strong style={{ color: 'var(--text-primary)' }}>{initialScenario.title}</strong>
+            </span>
+          )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Button
-            variant="primary"
-            icon={<Save size={16} />}
-            onClick={handleSubmit}
-            isLoading={isSubmitting}
-          >
-            Save Tactical Scenario
-          </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {isEditMode ? (
+            <>
+              {initialScenario && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<RotateCcw size={14} />}
+                  onClick={handleResetToOriginal}
+                  title="Discard unsaved changes and restore original coordinates"
+                  disabled={isSubmitting}
+                >
+                  Reset
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<Copy size={14} />}
+                onClick={() => void handleSaveScenario({ mode: 'create_new' })}
+                isLoading={isCreating}
+                disabled={isSubmitting}
+                title="Save as a new scenario copy without modifying the original"
+              >
+                Save as New Copy
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Save size={15} />}
+                onClick={() => void handleSaveScenario({ mode: 'update' })}
+                isLoading={isUpdating}
+                disabled={isSubmitting}
+                title="Update and overwrite the existing scenario in-place"
+              >
+                Update Scenario
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Zap size={14} />}
+                onClick={() => void handleSaveScenario({ mode: 'update', andAnalyze: true })}
+                isLoading={isUpdating}
+                disabled={isSubmitting}
+                title="Save changes and immediately launch AI tactical analysis"
+              >
+                Update & Analyze
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<Zap size={14} />}
+                onClick={() => void handleSaveScenario({ mode: 'create_new', andAnalyze: true })}
+                isLoading={isCreating}
+                disabled={isSubmitting}
+                title="Save scenario and immediately launch AI tactical analysis"
+              >
+                Save & Analyze
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Save size={15} />}
+                onClick={() => void handleSaveScenario({ mode: 'create_new' })}
+                isLoading={isCreating}
+                disabled={isSubmitting}
+              >
+                Save Tactical Scenario
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Edit Mode Notice Banner */}
+      {isEditMode && initialScenario && (
+        <div
+          style={{
+            padding: '12px 18px',
+            borderRadius: 'var(--radius-lg)',
+            backgroundColor: 'rgba(59, 130, 246, 0.08)',
+            border: '1px solid rgba(59, 130, 246, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Edit3 size={18} color="var(--color-tactical)" style={{ flexShrink: 0 }} />
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Editing Scenario & Coordinates:</strong> All 22 player positions, custom names, roles, and ball coordinates are loaded exactly as saved. Modifying player positions on the pitch updates their coordinates while preserving team structures.
+            </div>
+          </div>
+          <Link to="/builder">
+            <Button variant="ghost" size="sm">
+              New Blank Scenario
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Errors Banner */}
       {(validationErrors.length > 0 || submitError) && (
@@ -740,5 +908,68 @@ export const ScenarioBuilderPage: FC = () => {
         </div>
       </div>
     </div>
+  )
+}
+
+export const ScenarioBuilderPage: FC = () => {
+  const { id: routeScenarioId } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const editScenarioId = routeScenarioId || searchParams.get('edit_id') || searchParams.get('scenario_id') || null
+
+  const {
+    data: existingScenario,
+    isLoading: isLoadingExisting,
+    error: loadExistingError,
+    refetch: refetchExisting,
+  } = useApiQuery(
+    () => (editScenarioId ? scenarioService.getScenarioById(editScenarioId) : Promise.resolve(null)),
+    [editScenarioId],
+    { enabled: Boolean(editScenarioId) },
+  )
+
+  if (editScenarioId && isLoadingExisting && !existingScenario) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 0', gap: '16px' }}>
+        <LoadingSpinner size="lg" />
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', fontWeight: 500 }}>
+          Loading pitch scenario coordinates and tactical setup for editing...
+        </div>
+      </div>
+    )
+  }
+
+  if (editScenarioId && loadExistingError && !existingScenario) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <Link to="/scenarios">
+          <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />}>
+            Back to Scenarios
+          </Button>
+        </Link>
+        <EmptyState
+          icon={<Info size={28} />}
+          title="Could Not Load Scenario for Editing"
+          description={loadExistingError.message || `No scenario with ID ${editScenarioId} was found.`}
+          action={
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <Button variant="secondary" onClick={() => void refetchExisting()}>
+                Retry
+              </Button>
+              <Link to="/builder">
+                <Button variant="primary">Start Clean Scenario</Button>
+              </Link>
+            </div>
+          }
+        />
+      </div>
+    )
+  }
+
+  return (
+    <ScenarioBuilderForm
+      key={existingScenario ? existingScenario.id : 'clean-scenario-builder'}
+      initialScenario={existingScenario}
+      editScenarioId={editScenarioId}
+    />
   )
 }

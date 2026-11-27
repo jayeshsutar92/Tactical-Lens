@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BookOpen,
   Compass,
+  Edit3,
   Home,
   PlusCircle,
   Shield,
@@ -225,44 +226,47 @@ export const DashboardPage: FC = () => {
             ) : scenarios && scenarios.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {scenarios.slice(0, 3).map((scenario) => (
-                  <Link
+                  <div
                     key={scenario.id}
-                    to={`/scenarios/${scenario.id}`}
-                    style={{ textDecoration: 'none' }}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-subtle)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      transition: 'border-color var(--transition-fast)',
+                    }}
                   >
-                    <div
-                      style={{
-                        padding: '14px 16px',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: 'var(--bg-elevated)',
-                        border: '1px solid var(--border-subtle)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        transition: 'border-color var(--transition-fast)',
-                        cursor: 'pointer',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--color-pitch)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-subtle)'
-                      }}
+                    <Link
+                      to={`/scenarios/${scenario.id}`}
+                      style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}
                     >
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                          {scenario.title}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                          {scenario.tactical_situation}
-                        </div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        {scenario.title}
                       </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        {scenario.tactical_situation}
+                      </div>
+                    </Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <Link to={`/builder?edit_id=${scenario.id}`} style={{ textDecoration: 'none' }}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<Edit3 size={13} />}
+                          title="Edit / Rebuild Scenario"
+                        >
+                          Edit
+                        </Button>
+                      </Link>
                       <Badge variant="pitch">
                         {scenario.match_phase.replace('_', ' ')}
                       </Badge>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             ) : (

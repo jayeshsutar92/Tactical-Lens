@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Compass,
   Cpu,
+  Edit3,
   HelpCircle,
   Layers,
   Play,
@@ -385,11 +386,18 @@ export const AnalysisPage: FC = () => {
                     </div>
                     <CardTitle>{selectedScenario.title}</CardTitle>
                   </div>
-                  <Link to={`/scenarios/${selectedScenario.id}`}>
-                    <Button variant="ghost" size="sm">
-                      Inspect Details
-                    </Button>
-                  </Link>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Link to={`/builder?edit_id=${selectedScenario.id}`}>
+                      <Button variant="outline" size="sm" icon={<Edit3 size={13} />}>
+                        Edit / Rebuild
+                      </Button>
+                    </Link>
+                    <Link to={`/scenarios/${selectedScenario.id}`}>
+                      <Button variant="ghost" size="sm">
+                        Inspect Details
+                      </Button>
+                    </Link>
+                  </div>
                 </CardHeader>
                 <CardContent style={{ padding: '0 16px 16px 16px' }}>
                   <TacticalPitch

@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Calendar,
   Compass,
+  Edit3,
   FileText,
   History,
   MessageSquare,
@@ -200,6 +201,13 @@ export const AnalysisDetailPage: FC = () => {
             icon={<RefreshCw size={14} />}
             title="Refresh Analysis Record"
           />
+          {analysis.scenario_id && (
+            <Link to={`/builder?edit_id=${analysis.scenario_id}`}>
+              <Button variant="outline" size="sm" icon={<Edit3 size={14} />}>
+                Edit / Rebuild Scenario
+              </Button>
+            </Link>
+          )}
           <Link to={`/analysis?scenario_id=${analysis.scenario_id}`}>
             <Button variant="primary" size="sm" icon={<Zap size={14} />}>
               Re-Analyze Scenario

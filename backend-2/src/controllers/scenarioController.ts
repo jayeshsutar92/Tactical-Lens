@@ -1,6 +1,10 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ScenarioService } from '../services/scenarioService.js';
-import type { ScenarioCreateInput, ScenarioQueryInput } from '../schemas/scenario.js';
+import type {
+  ScenarioCreateInput,
+  ScenarioQueryInput,
+  ScenarioUpdateInput,
+} from '../schemas/scenario.js';
 
 export class ScenarioController {
   public static async listScenarios(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -28,6 +32,21 @@ export class ScenarioController {
     try {
       const scenario = await ScenarioService.createScenario(req.body as ScenarioCreateInput);
       res.status(201).json(scenario);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async updateScenario(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const scenarioId = Array.isArray(req.params.scenario_id)
+        ? req.params.scenario_id[0]
+        : req.params.scenario_id;
+      const scenario = await ScenarioService.updateScenario(
+        scenarioId as string,
+        req.body as ScenarioUpdateInput
+      );
+      res.status(200).json(scenario);
     } catch (err) {
       next(err);
     }

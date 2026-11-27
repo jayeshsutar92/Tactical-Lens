@@ -72,3 +72,5 @@ export interface ScenarioCreatePayload {
   ball_position: BallPosition
   match_context?: MatchContext
 }
+
+export type ScenarioUpdatePayload = Partial<ScenarioCreatePayload>

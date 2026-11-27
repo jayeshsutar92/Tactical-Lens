@@ -5,6 +5,7 @@ import {
   Calendar,
   Clock,
   Compass,
+  Edit3,
   Info,
   MapPin,
   Trash2,
@@ -126,6 +127,11 @@ export const ScenarioDetailPage: FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Link to={`/builder?edit_id=${scenario.id}`}>
+            <Button variant="outline" size="sm" icon={<Edit3 size={14} />}>
+              Edit / Rebuild
+            </Button>
+          </Link>
           <Link to={`/analysis?scenario_id=${scenario.id}`}>
             <Button variant="primary" size="sm" icon={<Zap size={14} />}>
               Analyze with AI

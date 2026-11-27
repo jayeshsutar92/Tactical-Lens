@@ -74,6 +74,7 @@ All five existing PostgreSQL tables are mirrored via Drizzle ORM in `src/db/sche
 | `GET` | `/api/v1/scenarios` | List scenarios with pagination (`skip`, `limit`) and filters (`match_phase`, `is_prepared`) |
 | `GET` | `/api/v1/scenarios/:scenario_id` | Get single scenario by UUID with player coordinates and team formations |
 | `POST` | `/api/v1/scenarios` | Create custom scenario with Zod validation |
+| `PUT` / `PATCH` | `/api/v1/scenarios/:scenario_id` | Update existing scenario with Zod validation |
 | `DELETE` | `/api/v1/scenarios/:scenario_id` | Delete scenario by UUID (HTTP 204 No Content) |
 | `GET` | `/api/v1/analysis` | List analysis history with optional `scenario_id` filter |
 | `GET` | `/api/v1/analysis/:id` | Get single analysis with structured tactical report and conversation messages |

@@ -1,6 +1,6 @@
 import { type FC, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Compass, Filter, Plus, Shield, Zap } from 'lucide-react'
+import { Compass, Edit3, Filter, Plus, Shield, Zap } from 'lucide-react'
 import {
   Badge,
   Button,
@@ -117,17 +117,31 @@ export const ScenariosPage: FC = () => {
                   Created: {formatDate(scenario.created_at)}
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(`/scenarios/${scenario.id}`)
-                  }}
-                >
-                  Inspect
-                </Button>
+              <CardFooter style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/scenarios/${scenario.id}`)
+                    }}
+                  >
+                    Inspect
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Edit3 size={13} />}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/builder?edit_id=${scenario.id}`)
+                    }}
+                    title="Edit and rebuild this scenario in the Interactive Pitch Studio"
+                  >
+                    Edit / Rebuild
+                  </Button>
+                </div>
                 <Button
                   variant="primary"
                   size="sm"

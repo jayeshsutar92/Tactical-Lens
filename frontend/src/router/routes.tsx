@@ -50,6 +50,14 @@ export const router = createBrowserRouter([
         element: <ScenarioDetailPage />,
       },
       {
+        path: 'scenarios/:id/edit',
+        element: <ScenarioBuilderPage />,
+      },
+      {
+        path: 'scenarios/:id/rebuild',
+        element: <ScenarioBuilderPage />,
+      },
+      {
         path: 'analysis',
         element: <AnalysisPage />,
       },

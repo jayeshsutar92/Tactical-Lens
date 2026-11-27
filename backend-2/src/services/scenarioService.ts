@@ -6,6 +6,7 @@ import type {
   ScenarioQueryInput,
   ScenarioResponse,
   ScenarioSummaryResponse,
+  ScenarioUpdateInput,
 } from '../schemas/scenario.js';
 import { EntityNotFoundError } from '../utils/errors.js';
 
@@ -86,6 +87,45 @@ export class ScenarioService {
         created_at: now,
         updated_at: now,
       })
+      .returning();
+
+    return rows[0] as unknown as ScenarioResponse;
+  }
+
+  /**
+   * Updates an existing tactical scenario.
+   */
+  public static async updateScenario(
+    id: string,
+    input: ScenarioUpdateInput
+  ): Promise<ScenarioResponse> {
+    const existing = await db
+      .select({ id: scenarios.id })
+      .from(scenarios)
+      .where(eq(scenarios.id, id))
+      .limit(1);
+
+    if (existing.length === 0) {
+      throw new EntityNotFoundError('Scenario', id);
+    }
+
+    const updateValues: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.title !== undefined) updateValues.title = input.title;
+    if (input.description !== undefined) updateValues.description = input.description;
+    if (input.match_phase !== undefined) updateValues.match_phase = input.match_phase;
+    if (input.tactical_situation !== undefined) updateValues.tactical_situation = input.tactical_situation;
+    if (input.attacking_team !== undefined) updateValues.attacking_team = input.attacking_team;
+    if (input.defending_team !== undefined) updateValues.defending_team = input.defending_team;
+    if (input.ball_position !== undefined) updateValues.ball_position = input.ball_position;
+    if (input.match_context !== undefined) updateValues.match_context = input.match_context;
+
+    const rows = await db
+      .update(scenarios)
+      .set(updateValues)
+      .where(eq(scenarios.id, id))
       .returning();
 
     return rows[0] as unknown as ScenarioResponse;

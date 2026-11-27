@@ -373,6 +373,7 @@ All API routes are prefixed under `/api/v1`:
 | `GET` | `/api/v1/scenarios` | List saved tactical scenarios with pagination and match phase filters |
 | `POST` | `/api/v1/scenarios` | Create and save a new scenario with 105×68m player coordinates |
 | `GET` | `/api/v1/scenarios/:id` | Fetch scenario details by UUID |
+| `PUT` / `PATCH` | `/api/v1/scenarios/:id` | Update an existing tactical scenario with Zod validation |
 | `DELETE` | `/api/v1/scenarios/:id` | Delete a saved scenario (204 No Content) |
 | `GET` | `/api/v1/analysis` | List tactical analysis execution history |
 | `POST` | `/api/v1/analysis` | Run full analysis pipeline (Spatial Math + RAG + Groq LLM) |

@@ -2,6 +2,7 @@ import { type FC, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Calendar,
+  Edit3,
   FileText,
   History,
   Info,
@@ -172,11 +173,20 @@ export const HistoryPage: FC = () => {
                       {new Date(session.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
 
-                    <Link to={`/analysis/${session.id}`}>
-                      <Button variant="outline" size="sm" icon={<FileText size={14} />}>
-                        Reopen Report
-                      </Button>
-                    </Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {session.scenarioId && (
+                        <Link to={`/builder?edit_id=${session.scenarioId}`}>
+                          <Button variant="ghost" size="sm" icon={<Edit3 size={13} />} title="Edit / Rebuild Scenario">
+                            Edit / Rebuild
+                          </Button>
+                        </Link>
+                      )}
+                      <Link to={`/analysis/${session.id}`}>
+                        <Button variant="outline" size="sm" icon={<FileText size={14} />}>
+                          Reopen Report
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
