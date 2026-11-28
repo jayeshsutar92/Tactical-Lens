@@ -142,6 +142,7 @@ export const analysisFollowUpResponseSchema = z.object({
   relevant_players_mentioned: z.array(z.string()).default([]),
   clarified_tactics: z.array(z.string()).default([]),
   sources_cited: z.array(sourceCitationSchema).default([]),
+  is_fallback: z.boolean().default(false),
   created_at: z.string(),
 });
 

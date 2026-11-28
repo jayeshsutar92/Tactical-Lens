@@ -131,7 +131,7 @@ export const FollowUpConversation: FC<FollowUpConversationProps> = ({
             Ask deep-dive questions referencing {scenarioTitle || 'the match scenario'} and AI pressing deductions.
           </span>
         </div>
-        <Badge variant="tactical">Groq Llama 3.3 &bull; Node.js Engine</Badge>
+        <Badge variant="tactical">Groq GPT-OSS-120B &bull; Node.js Engine</Badge>
       </CardHeader>
       <CardContent>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

@@ -153,6 +153,7 @@ export class TacticalAgentOrchestrator {
     relevant_players_mentioned: string[];
     clarified_tactics: string[];
     citations: SourceCitation[];
+    isFallback: boolean;
   }> {
     // 1. Ensure deterministic spatial metrics are computed for grounding
     let spatialMetrics: Record<string, any> | null = spatialMetricsInput || null;
@@ -164,7 +165,11 @@ export class TacticalAgentOrchestrator {
       }
     }
 
-    // 2. Retrieve additional tactical knowledge for the question
+    // 2. Retrieve additional tactical knowledge for the question (skipping casual greetings/gibberish)
+    const qClean = followUpQuestion.trim().toLowerCase();
+    const isCasualOrGreeting =
+      /^(hello|hi|hey|good\s*(morning|afternoon|evening)|yo)\b/i.test(qClean) || qClean.length < 3;
+
     let additionalChunks: Array<{
       documentTitle: string;
       topic: string;
@@ -172,27 +177,37 @@ export class TacticalAgentOrchestrator {
     }> = [];
     let citations: SourceCitation[] = [];
 
-    try {
-      const searchRes = await KnowledgeService.semanticSearchChunks(db, followUpQuestion, {
-        topK: 2,
-        minSimilarity: 0.15,
-      });
+    if (!isCasualOrGreeting) {
+      try {
+        const searchRes = await KnowledgeService.semanticSearchChunks(db, followUpQuestion, {
+          topK: 2,
+          minSimilarity: 0.2,
+        });
 
-      additionalChunks = searchRes.map((r) => ({
-        documentTitle: r.documentTitle,
-        topic: r.topic,
-        content: r.chunk.content,
-      }));
+        const validResults = searchRes.filter(
+          (r) =>
+            r.documentTitle &&
+            r.documentTitle.trim().toLowerCase() !== 'string' &&
+            r.documentTitle.trim().toLowerCase() !== 'test' &&
+            r.score >= 0.2
+        );
 
-      citations = searchRes.map((r) => ({
-        document_title: r.documentTitle,
-        topic: r.topic,
-        author: r.author || undefined,
-        publication: r.publication || undefined,
-        relevance_score: Math.round(r.score * 100) / 100,
-      }));
-    } catch (kErr: any) {
-      logger.warn(`Follow-up knowledge retrieval notice: ${kErr?.message || kErr}`);
+        additionalChunks = validResults.map((r) => ({
+          documentTitle: r.documentTitle,
+          topic: r.topic,
+          content: r.chunk.content,
+        }));
+
+        citations = validResults.map((r) => ({
+          document_title: r.documentTitle,
+          topic: r.topic,
+          author: r.author || undefined,
+          publication: r.publication || undefined,
+          relevance_score: Math.round(r.score * 100) / 100,
+        }));
+      } catch (kErr: any) {
+        logger.warn(`Follow-up knowledge retrieval notice: ${kErr?.message || kErr}`);
+      }
     }
 
     const scenarioInfo = ScenarioTool.execute(scenarioData);
@@ -249,6 +264,7 @@ export class TacticalAgentOrchestrator {
           relevant_players_mentioned: validated.data.relevant_players_mentioned,
           clarified_tactics: validated.data.clarified_tactics,
           citations,
+          isFallback: false,
         };
       }
 
@@ -257,10 +273,17 @@ export class TacticalAgentOrchestrator {
         relevant_players_mentioned: this.extractPlayerReferences(rawAnswer, scenarioData),
         clarified_tactics: this.extractTacticalConcepts(rawAnswer),
         citations,
+        isFallback: false,
       };
     } catch (err: any) {
-      logger.warn(
-        `Groq follow-up generation failed (${err?.message || err}). Using dynamic grounded fallback synthesis.`
+      console.error('[TacticalAgentOrchestrator] Groq follow-up generation failed:', {
+        message: err?.message || err,
+        status: err?.status,
+        code: err?.code,
+        stack: err?.stack,
+      });
+      logger.error(
+        `Groq follow-up generation failed (${err?.message || err}). Falling back to dynamic synthesis.`
       );
       const fallback = this.buildFollowUpFallback(
         followUpQuestion,
@@ -272,6 +295,7 @@ export class TacticalAgentOrchestrator {
         relevant_players_mentioned: fallback.relevant_players_mentioned,
         clarified_tactics: fallback.clarified_tactics,
         citations,
+        isFallback: true,
       };
     }
   }
@@ -292,6 +316,27 @@ export class TacticalAgentOrchestrator {
     const df = scenarioData.defending_team || {};
     const attName = att.name || 'the attacking team';
     const defName = df.name || 'the defending unit';
+
+    const qLower = question.toLowerCase().trim();
+    const isGreeting = /^(hello|hi|hey|good\s*(morning|afternoon|evening)|yo)\b/i.test(qLower);
+    const isGibberish =
+      qLower.length < 3 || /^[^a-zA-Z0-9]+$/.test(qLower) || /^[bcdfghjklmnpqrstvwxyz]{4,}$/i.test(qLower);
+
+    if (isGreeting) {
+      return {
+        answer: `Hello! I am your TacticalLens tactical assistant analyzing ${scenarioData.title || 'this match scenario'}. Ask me anything about ${defName}'s pressing triggers, cover shadows, passing lanes, or defensive block compactness.`,
+        relevant_players_mentioned: [],
+        clarified_tactics: ['Tactical Match Analysis'],
+      };
+    }
+
+    if (isGibberish) {
+      return {
+        answer: `I could not understand that input. Please ask a specific football question about this scenario's player positions, pressing triggers, cover shadows, or defensive shape.`,
+        relevant_players_mentioned: [],
+        clarified_tactics: ['Tactical Scenario Inquiry'],
+      };
+    }
 
     const carrier = spatialMetrics?.ball_carrier;
     const carrierName = carrier ? `#${carrier.number} ${carrier.name}` : 'the ball carrier';
@@ -319,7 +364,6 @@ export class TacticalAgentOrchestrator {
     const zone14Defenders = zone14?.zone14_defenders_count ?? 2;
     const screeningRatio = Math.round((zone14?.central_screening_ratio ?? 0.75) * 100);
 
-    const qLower = question.toLowerCase();
     let answer = '';
     const relevantPlayers: string[] = [];
     const clarifiedTactics: string[] = [];

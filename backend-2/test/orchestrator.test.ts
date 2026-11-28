@@ -204,6 +204,17 @@ describe('TacticalAgentOrchestrator & Resilience Fallback', () => {
     expect(result.answer).not.toContain('Addressing your follow-up inquiry');
     expect(result.relevant_players_mentioned.length).toBeGreaterThan(0);
     expect(result.clarified_tactics).toContain('Zone 14 Protection');
+    expect(result.isFallback).toBe(true);
+
+    const greetingResult = await orchestrator.runFollowUp(
+      dummyDb,
+      mockScenario,
+      'Initial tactical summary',
+      [],
+      'Hello'
+    );
+    expect(greetingResult.answer).toContain('TacticalLens');
+    expect(greetingResult.isFallback).toBe(true);
   });
 
   it('handles live follow-up queries parsing JSON output from Groq', async () => {
@@ -237,5 +248,6 @@ describe('TacticalAgentOrchestrator & Resilience Fallback', () => {
     expect(result.answer).toContain('Diaz angles his run');
     expect(result.relevant_players_mentioned).toContain('#7 Diaz');
     expect(result.clarified_tactics).toContain('Touchline Trap');
+    expect(result.isFallback).toBe(false);
   });
 });

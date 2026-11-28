@@ -40,7 +40,7 @@ export const config = {
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
   logLevel: process.env.LOG_LEVEL || 'info',
   groqApiKey: process.env.GROQ_API_KEY || '',
-  groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  groqModel: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
   groqTimeoutMs: parseInt(process.env.GROQ_TIMEOUT_MS || '30000', 10),
   groqMaxRetries: parseInt(process.env.GROQ_MAX_RETRIES || '3', 10),
   embeddingModel: process.env.EMBEDDING_MODEL || 'Xenova/bge-small-en-v1.5',

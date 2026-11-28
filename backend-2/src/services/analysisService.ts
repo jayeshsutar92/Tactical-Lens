@@ -209,6 +209,7 @@ export class AnalysisService {
           relevant_players_mentioned: result.relevant_players_mentioned,
           clarified_tactics: result.clarified_tactics,
           sources_cited: result.citations,
+          is_fallback: result.isFallback,
         },
         created_at: now,
         updated_at: now,
@@ -222,6 +223,7 @@ export class AnalysisService {
       relevant_players_mentioned: result.relevant_players_mentioned,
       clarified_tactics: result.clarified_tactics,
       sources_cited: result.citations,
+      is_fallback: result.isFallback,
       created_at: now,
     };
   }
